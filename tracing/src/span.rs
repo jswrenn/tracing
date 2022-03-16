@@ -1023,6 +1023,10 @@ impl Span {
 
     #[inline(always)]
     fn do_enter(&self) {
+        // don't trace allocations associated with bookkeeping for entering the
+        // span
+        crate::allocator::disable_tracing();
+
         if let Some(inner) = self.inner.as_ref() {
             inner.subscriber.enter(&inner.id);
         }
@@ -1032,6 +1036,9 @@ impl Span {
                 self.log(ACTIVITY_LOG_TARGET, log::Level::Trace, format_args!("-> {}", _meta.name()));
             }
         }}
+
+        // trace allocations within the entered span
+        crate::allocator::enable_tracing();
     }
 
     // Called from [`Entered`] and [`EnteredSpan`] drops.
@@ -1040,6 +1047,10 @@ impl Span {
     // call means that spans may still be exited when unwinding.
     #[inline(always)]
     fn do_exit(&self) {
+        // don't trace allocations associated with exiting the span (or
+        // allocations thereafter)
+        crate::allocator::disable_tracing();
+
         if let Some(inner) = self.inner.as_ref() {
             inner.subscriber.exit(&inner.id);
         }
@@ -1441,6 +1452,8 @@ impl<'a> From<&'a EnteredSpan> for Option<Id> {
 impl Drop for Span {
     #[inline(always)]
     fn drop(&mut self) {
+        crate::allocator::disable_tracing();
+
         if let Some(Inner {
             ref id,
             ref subscriber,

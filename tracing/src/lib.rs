@@ -966,6 +966,8 @@ pub mod span;
 pub(crate) mod stdlib;
 pub mod subscriber;
 
+pub mod allocator;
+
 #[doc(hidden)]
 pub mod __macro_support {
     pub use crate::callsite::Callsite;
