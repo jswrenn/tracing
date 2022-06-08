@@ -611,7 +611,7 @@ where
         }
     }
 
-    fn on_new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, cx: Context<'_, C>) {
+    fn on_new_span(&self, attrs: &span::Attributes<'_>, id: &span::LocalId, cx: Context<'_, C>) {
         self.did_enable(|| {
             let cx = cx.with_filter(self.id());
             self.filter.on_new_span(attrs, id, cx.clone());
@@ -624,14 +624,14 @@ where
         self.filter.max_level_hint()
     }
 
-    fn on_record(&self, span: &span::Id, values: &span::Record<'_>, cx: Context<'_, C>) {
+    fn on_record(&self, span: &span::LocalId, values: &span::Record<'_>, cx: Context<'_, C>) {
         if let Some(cx) = cx.if_enabled_for(span, self.id()) {
             self.filter.on_record(span, values, cx.clone());
             self.subscriber.on_record(span, values, cx);
         }
     }
 
-    fn on_follows_from(&self, span: &span::Id, follows: &span::Id, cx: Context<'_, C>) {
+    fn on_follows_from(&self, span: &span::LocalId, follows: &span::LocalId, cx: Context<'_, C>) {
         // only call `on_follows_from` if both spans are enabled by us
         if cx.is_enabled_for(span, self.id()) && cx.is_enabled_for(follows, self.id()) {
             self.subscriber
@@ -645,21 +645,21 @@ where
         })
     }
 
-    fn on_enter(&self, id: &span::Id, cx: Context<'_, C>) {
+    fn on_enter(&self, id: &span::LocalId, cx: Context<'_, C>) {
         if let Some(cx) = cx.if_enabled_for(id, self.id()) {
             self.filter.on_enter(id, cx.clone());
             self.subscriber.on_enter(id, cx);
         }
     }
 
-    fn on_exit(&self, id: &span::Id, cx: Context<'_, C>) {
+    fn on_exit(&self, id: &span::LocalId, cx: Context<'_, C>) {
         if let Some(cx) = cx.if_enabled_for(id, self.id()) {
             self.filter.on_exit(id, cx.clone());
             self.subscriber.on_exit(id, cx);
         }
     }
 
-    fn on_close(&self, id: span::Id, cx: Context<'_, C>) {
+    fn on_close(&self, id: span::LocalId, cx: Context<'_, C>) {
         if let Some(cx) = cx.if_enabled_for(&id, self.id()) {
             self.filter.on_close(id.clone(), cx.clone());
             self.subscriber.on_close(id, cx);
@@ -667,7 +667,7 @@ where
     }
 
     // XXX(eliza): the existence of this method still makes me sad...
-    fn on_id_change(&self, old: &span::Id, new: &span::Id, cx: Context<'_, C>) {
+    fn on_id_change(&self, old: &span::LocalId, new: &span::LocalId, cx: Context<'_, C>) {
         if let Some(cx) = cx.if_enabled_for(old, self.id()) {
             self.subscriber.on_id_change(old, new, cx)
         }

@@ -122,18 +122,18 @@ where
         )
     }
 
-    fn new_span(&self, span: &span::Attributes<'_>) -> span::Id {
+    fn new_span(&self, span: &span::Attributes<'_>) -> span::LocalId {
         let id = self.inner.new_span(span);
         self.subscriber.on_new_span(span, &id, self.ctx());
         id
     }
 
-    fn record(&self, span: &span::Id, values: &span::Record<'_>) {
+    fn record(&self, span: &span::LocalId, values: &span::Record<'_>) {
         self.inner.record(span, values);
         self.subscriber.on_record(span, values, self.ctx());
     }
 
-    fn record_follows_from(&self, span: &span::Id, follows: &span::Id) {
+    fn record_follows_from(&self, span: &span::LocalId, follows: &span::LocalId) {
         self.inner.record_follows_from(span, follows);
         self.subscriber.on_follows_from(span, follows, self.ctx());
     }
@@ -143,17 +143,17 @@ where
         self.subscriber.on_event(event, self.ctx());
     }
 
-    fn enter(&self, span: &span::Id) {
+    fn enter(&self, span: &span::LocalId) {
         self.inner.enter(span);
         self.subscriber.on_enter(span, self.ctx());
     }
 
-    fn exit(&self, span: &span::Id) {
+    fn exit(&self, span: &span::LocalId) {
         self.inner.exit(span);
         self.subscriber.on_exit(span, self.ctx());
     }
 
-    fn clone_span(&self, old: &span::Id) -> span::Id {
+    fn clone_span(&self, old: &span::LocalId) -> span::LocalId {
         let new = self.inner.clone_span(old);
         if &new != old {
             self.subscriber.on_id_change(old, &new, self.ctx())
@@ -162,11 +162,11 @@ where
     }
 
     #[inline]
-    fn drop_span(&self, id: span::Id) {
+    fn drop_span(&self, id: span::LocalId) {
         self.try_close(id);
     }
 
-    fn try_close(&self, id: span::Id) -> bool {
+    fn try_close(&self, id: span::LocalId) -> bool {
         #[cfg(all(feature = "registry", feature = "std"))]
         let subscriber = &self.inner as &dyn Collect;
         #[cfg(all(feature = "registry", feature = "std"))]
@@ -263,19 +263,19 @@ where
     }
 
     #[inline]
-    fn on_new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, ctx: Context<'_, C>) {
+    fn on_new_span(&self, attrs: &span::Attributes<'_>, id: &span::LocalId, ctx: Context<'_, C>) {
         self.inner.on_new_span(attrs, id, ctx.clone());
         self.subscriber.on_new_span(attrs, id, ctx);
     }
 
     #[inline]
-    fn on_record(&self, span: &span::Id, values: &span::Record<'_>, ctx: Context<'_, C>) {
+    fn on_record(&self, span: &span::LocalId, values: &span::Record<'_>, ctx: Context<'_, C>) {
         self.inner.on_record(span, values, ctx.clone());
         self.subscriber.on_record(span, values, ctx);
     }
 
     #[inline]
-    fn on_follows_from(&self, span: &span::Id, follows: &span::Id, ctx: Context<'_, C>) {
+    fn on_follows_from(&self, span: &span::LocalId, follows: &span::LocalId, ctx: Context<'_, C>) {
         self.inner.on_follows_from(span, follows, ctx.clone());
         self.subscriber.on_follows_from(span, follows, ctx);
     }
@@ -287,25 +287,25 @@ where
     }
 
     #[inline]
-    fn on_enter(&self, id: &span::Id, ctx: Context<'_, C>) {
+    fn on_enter(&self, id: &span::LocalId, ctx: Context<'_, C>) {
         self.inner.on_enter(id, ctx.clone());
         self.subscriber.on_enter(id, ctx);
     }
 
     #[inline]
-    fn on_exit(&self, id: &span::Id, ctx: Context<'_, C>) {
+    fn on_exit(&self, id: &span::LocalId, ctx: Context<'_, C>) {
         self.inner.on_exit(id, ctx.clone());
         self.subscriber.on_exit(id, ctx);
     }
 
     #[inline]
-    fn on_close(&self, id: span::Id, ctx: Context<'_, C>) {
+    fn on_close(&self, id: span::LocalId, ctx: Context<'_, C>) {
         self.inner.on_close(id.clone(), ctx.clone());
         self.subscriber.on_close(id, ctx);
     }
 
     #[inline]
-    fn on_id_change(&self, old: &span::Id, new: &span::Id, ctx: Context<'_, C>) {
+    fn on_id_change(&self, old: &span::LocalId, new: &span::LocalId, ctx: Context<'_, C>) {
         self.inner.on_id_change(old, new, ctx.clone());
         self.subscriber.on_id_change(old, new, ctx);
     }
@@ -362,7 +362,7 @@ where
 {
     type Data = C::Data;
 
-    fn span_data(&'a self, id: &span::Id) -> Option<Self::Data> {
+    fn span_data(&'a self, id: &span::LocalId) -> Option<Self::Data> {
         self.inner.span_data(id)
     }
 

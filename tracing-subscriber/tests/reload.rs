@@ -2,7 +2,7 @@
 use std::sync::atomic::{AtomicUsize, Ordering};
 use tracing_core::{
     collect::Interest,
-    span::{Attributes, Id, Record},
+    span::{Attributes, LocalId, Record},
     Collect, Event, Metadata,
 };
 use tracing_subscriber::{prelude::*, reload::*, subscribe};

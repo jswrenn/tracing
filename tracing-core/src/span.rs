@@ -1,9 +1,10 @@
 //! Spans represent periods of time in the execution of a program.
 use core::num::NonZeroU64;
+use std::sync::Arc;
 
 use crate::field::FieldSet;
 use crate::parent::Parent;
-use crate::{field, Metadata};
+use crate::{field, Metadata, Collect, Dispatch};
 
 /// Identifies a span within the context of a collector.
 ///
@@ -14,7 +15,13 @@ use crate::{field, Metadata};
 /// [collector]: super::collect::Collect
 /// [`new_span`]: super::collect::Collect::new_span
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct Id(NonZeroU64);
+pub struct LocalId(NonZeroU64);
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct GlobalId {
+    local_id: LocalId,
+    dispatch: Dispatch,
+}
 
 /// Attributes provided to a collector describing a new span when it is
 /// created.
@@ -49,16 +56,16 @@ pub struct Current {
 #[derive(Debug)]
 enum CurrentInner {
     Current {
-        id: Id,
+        id: GlobalId,
         metadata: &'static Metadata<'static>,
     },
     None,
     Unknown,
 }
 
-// ===== impl Span =====
+// ===== impl LocalId =====
 
-impl Id {
+impl LocalId {
     /// Constructs a new span ID from the given `u64`.
     ///
     /// <div class="example-wrap" style="display:inline-block">
@@ -68,7 +75,7 @@ impl Id {
     /// # Panics
     /// - If the provided `u64` is 0.
     pub fn from_u64(u: u64) -> Self {
-        Id(NonZeroU64::new(u).expect("span IDs must be > 0"))
+        LocalId(NonZeroU64::new(u).expect("span IDs must be > 0"))
     }
 
     /// Constructs a new span ID from the given `NonZeroU64`.
@@ -76,7 +83,7 @@ impl Id {
     /// Unlike [`Id::from_u64`](Self::from_u64), this will never panic.
     #[inline]
     pub const fn from_non_zero_u64(id: NonZeroU64) -> Self {
-        Id(id)
+        LocalId(id)
     }
 
     // Allow `into` by-ref since we don't want to impl Copy for Id
@@ -95,9 +102,41 @@ impl Id {
     }
 }
 
-impl<'a> From<&'a Id> for Option<Id> {
-    fn from(id: &'a Id) -> Self {
+impl<'a> From<&'a LocalId> for Option<LocalId> {
+    fn from(id: &'a LocalId) -> Self {
         Some(id.clone())
+    }
+}
+
+// ===== impl GlobalId =====
+
+impl GlobalId {
+    /// Constructs a new [`GlobalId`] from a given [`LocalId`] and the
+    /// [`Dispatch`] that assigned that [`LocalId`].
+    pub(crate) fn new(local_id: LocalId, dispatch: Dispatch) -> Self {
+        Self {
+            local_id,
+            dispatch,
+        }
+    }
+
+    /// Constructs a new [`GlobalId`] with a given [`LocalId`], and the same
+    /// `dispatch` as `&self`.
+    pub(crate) fn with_local_id(&self, local_id: LocalId) -> Self {
+        Self {
+            local_id,
+            dispatch: self.dispatch(),
+        }
+    }
+
+    /// Produces the [`LocalId`] of this [`GlobalId`]. 
+    pub fn local_id(&self) -> LocalId {
+        self.local_id.clone()
+    }
+
+    /// Produces the [`Dispatch`] that generated this [`GlobalId`].
+    pub fn dispatch(&self) -> Dispatch {
+        self.dispatch.clone()
     }
 }
 
@@ -127,7 +166,7 @@ impl<'a> Attributes<'a> {
     /// Returns `Attributes` describing a new child span of the specified
     /// parent span, with the provided metadata and values.
     pub fn child_of(
-        parent: Id,
+        parent: GlobalId,
         metadata: &'static Metadata<'static>,
         values: &'a field::ValueSet<'a>,
     ) -> Self {
@@ -169,7 +208,7 @@ impl<'a> Attributes<'a> {
     ///
     /// Otherwise (if the new span is a root or is a child of the current span),
     /// returns `None`.
-    pub fn parent(&self) -> Option<&Id> {
+    pub fn parent(&self) -> Option<&GlobalId> {
         match self.parent {
             Parent::Explicit(ref p) => Some(p),
             _ => None,
@@ -242,7 +281,7 @@ impl<'a> Record<'a> {
 impl Current {
     /// Constructs a new `Current` that indicates the current context is a span
     /// with the given `id` and `metadata`.
-    pub fn new(id: Id, metadata: &'static Metadata<'static>) -> Self {
+    pub fn new(id: GlobalId, metadata: &'static Metadata<'static>) -> Self {
         Self {
             inner: CurrentInner::Current { id, metadata },
         }
@@ -282,7 +321,7 @@ impl Current {
 
     /// Consumes `self` and returns the span `Id` and `Metadata` of the current
     /// span, if one exists and is known.
-    pub fn into_inner(self) -> Option<(Id, &'static Metadata<'static>)> {
+    pub fn into_inner(self) -> Option<(GlobalId, &'static Metadata<'static>)> {
         match self.inner {
             CurrentInner::Current { id, metadata } => Some((id, metadata)),
             _ => None,
@@ -290,7 +329,7 @@ impl Current {
     }
 
     /// Borrows the `Id` of the current span, if one exists and is known.
-    pub fn id(&self) -> Option<&Id> {
+    pub fn id(&self) -> Option<&GlobalId> {
         match self.inner {
             CurrentInner::Current { ref id, .. } => Some(id),
             _ => None,
@@ -306,19 +345,19 @@ impl Current {
     }
 }
 
-impl<'a> From<&'a Current> for Option<&'a Id> {
+impl<'a> From<&'a Current> for Option<&'a GlobalId> {
     fn from(cur: &'a Current) -> Self {
         cur.id()
     }
 }
 
-impl<'a> From<&'a Current> for Option<Id> {
+impl<'a> From<&'a Current> for Option<GlobalId> {
     fn from(cur: &'a Current) -> Self {
         cur.id().cloned()
     }
 }
 
-impl From<Current> for Option<Id> {
+impl From<Current> for Option<GlobalId> {
     fn from(cur: Current) -> Self {
         match cur.inner {
             CurrentInner::Current { id, .. } => Some(id),

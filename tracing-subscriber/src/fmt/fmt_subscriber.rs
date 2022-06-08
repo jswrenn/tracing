@@ -11,7 +11,7 @@ use std::{
 };
 use tracing_core::{
     field,
-    span::{Attributes, Current, Id, Record},
+    span::{Attributes, Current, LocalId, Record},
     Collect, Event, Metadata,
 };
 
@@ -647,7 +647,7 @@ where
     E: FormatEvent<C, N> + 'static,
     W: for<'writer> MakeWriter<'writer> + 'static,
 {
-    fn on_new_span(&self, attrs: &Attributes<'_>, id: &Id, ctx: Context<'_, C>) {
+    fn on_new_span(&self, attrs: &Attributes<'_>, id: &LocalId, ctx: Context<'_, C>) {
         let span = ctx.span(id).expect("Span not found, this is a bug");
         let mut extensions = span.extensions_mut();
 
@@ -679,7 +679,7 @@ where
         }
     }
 
-    fn on_record(&self, id: &Id, values: &Record<'_>, ctx: Context<'_, C>) {
+    fn on_record(&self, id: &LocalId, values: &Record<'_>, ctx: Context<'_, C>) {
         let span = ctx.span(id).expect("Span not found, this is a bug");
         let mut extensions = span.extensions_mut();
         if let Some(fields) = extensions.get_mut::<FormattedFields<N>>() {
@@ -698,7 +698,7 @@ where
         }
     }
 
-    fn on_enter(&self, id: &Id, ctx: Context<'_, C>) {
+    fn on_enter(&self, id: &LocalId, ctx: Context<'_, C>) {
         if self.fmt_span.trace_enter() || self.fmt_span.trace_close() && self.fmt_span.fmt_timing {
             let span = ctx.span(id).expect("Span not found, this is a bug");
             let mut extensions = span.extensions_mut();
@@ -718,7 +718,7 @@ where
         }
     }
 
-    fn on_exit(&self, id: &Id, ctx: Context<'_, C>) {
+    fn on_exit(&self, id: &LocalId, ctx: Context<'_, C>) {
         if self.fmt_span.trace_exit() || self.fmt_span.trace_close() && self.fmt_span.fmt_timing {
             let span = ctx.span(id).expect("Span not found, this is a bug");
             let mut extensions = span.extensions_mut();
@@ -738,7 +738,7 @@ where
         }
     }
 
-    fn on_close(&self, id: Id, ctx: Context<'_, C>) {
+    fn on_close(&self, id: LocalId, ctx: Context<'_, C>) {
         if self.fmt_span.trace_close() {
             let span = ctx.span(&id).expect("Span not found, this is a bug");
             let extensions = span.extensions();
@@ -883,7 +883,7 @@ where
     /// If this returns `None`, then no span exists for that ID (either it has
     /// closed or the ID is invalid).
     #[inline]
-    pub fn metadata(&self, id: &Id) -> Option<&'static Metadata<'static>>
+    pub fn metadata(&self, id: &LocalId) -> Option<&'static Metadata<'static>>
     where
         C: for<'lookup> LookupSpan<'lookup>,
     {
@@ -897,7 +897,7 @@ where
     ///
     /// [stored data]: SpanRef
     #[inline]
-    pub fn span(&self, id: &Id) -> Option<SpanRef<'_, C>>
+    pub fn span(&self, id: &LocalId) -> Option<SpanRef<'_, C>>
     where
         C: for<'lookup> LookupSpan<'lookup>,
     {
@@ -906,7 +906,7 @@ where
 
     /// Returns `true` if an active span exists for the given `Id`.
     #[inline]
-    pub fn exists(&self, id: &Id) -> bool
+    pub fn exists(&self, id: &LocalId) -> bool
     where
         C: for<'lookup> LookupSpan<'lookup>,
     {
@@ -970,7 +970,7 @@ where
     /// </pre></div>
     ///
     /// [stored data]: crate::registry::SpanRef
-    pub fn span_scope(&self, id: &Id) -> Option<registry::Scope<'_, C>>
+    pub fn span_scope(&self, id: &LocalId) -> Option<registry::Scope<'_, C>>
     where
         C: for<'lookup> LookupSpan<'lookup>,
     {

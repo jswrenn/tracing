@@ -3,7 +3,7 @@
 use tracing::{
     collect::{self, Collect},
     field::{Field, Visit},
-    info, span, warn, Event, Id, Level, Metadata,
+    info, span, warn, Event, LocalId, Level, Metadata,
 };
 
 use tracing_core::span::Current;
@@ -77,17 +77,17 @@ impl Collect for CounterCollector {
         interest
     }
 
-    fn new_span(&self, new_span: &span::Attributes<'_>) -> Id {
+    fn new_span(&self, new_span: &span::Attributes<'_>) -> LocalId {
         new_span.record(&mut self.visitor());
         let id = self.ids.fetch_add(1, Ordering::SeqCst);
-        Id::from_u64(id as u64)
+        LocalId::from_u64(id as u64)
     }
 
-    fn record_follows_from(&self, _span: &Id, _follows: &Id) {
+    fn record_follows_from(&self, _span: &LocalId, _follows: &LocalId) {
         // unimplemented
     }
 
-    fn record(&self, _: &Id, values: &span::Record<'_>) {
+    fn record(&self, _: &LocalId, values: &span::Record<'_>) {
         values.record(&mut self.visitor())
     }
 
@@ -99,8 +99,8 @@ impl Collect for CounterCollector {
         metadata.fields().iter().any(|f| f.name().contains("count"))
     }
 
-    fn enter(&self, _span: &Id) {}
-    fn exit(&self, _span: &Id) {}
+    fn enter(&self, _span: &LocalId) {}
+    fn exit(&self, _span: &LocalId) {}
     fn current_span(&self) -> Current {
         Current::unknown()
     }

@@ -8,7 +8,7 @@
 use tracing::{
     collect::{with_default, Collect, Interest},
     field::display,
-    span::{Attributes, Id, Record},
+    span::{Attributes, LocalId, Record},
     Event, Level, Metadata,
 };
 
@@ -33,22 +33,22 @@ fn event_macros_dont_infinite_loop() {
             true
         }
 
-        fn new_span(&self, _: &Attributes<'_>) -> Id {
-            Id::from_u64(0xAAAA)
+        fn new_span(&self, _: &Attributes<'_>) -> LocalId {
+            LocalId::from_u64(0xAAAA)
         }
 
-        fn record(&self, _: &Id, _: &Record<'_>) {}
+        fn record(&self, _: &LocalId, _: &Record<'_>) {}
 
-        fn record_follows_from(&self, _: &Id, _: &Id) {}
+        fn record_follows_from(&self, _: &LocalId, _: &LocalId) {}
 
         fn event(&self, event: &Event<'_>) {
             assert!(event.metadata().fields().iter().any(|f| f.name() == "foo"));
             tracing::event!(Level::TRACE, baz = false);
         }
 
-        fn enter(&self, _: &Id) {}
+        fn enter(&self, _: &LocalId) {}
 
-        fn exit(&self, _: &Id) {}
+        fn exit(&self, _: &LocalId) {}
 
         fn current_span(&self) -> tracing_core::span::Current {
             tracing_core::span::Current::unknown()

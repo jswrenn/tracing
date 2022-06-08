@@ -33,7 +33,7 @@ pub struct ErrorSubscriber<C, F = DefaultFields> {
 // so that we can downcast to something aware of them without knowing those
 // types at the callsite.
 pub(crate) struct WithContext(
-    fn(&Dispatch, &span::Id, f: &mut dyn FnMut(&'static Metadata<'static>, &str) -> bool),
+    fn(&Dispatch, &span::LocalId, f: &mut dyn FnMut(&'static Metadata<'static>, &str) -> bool),
 );
 
 impl<C, F> Subscribe<C> for ErrorSubscriber<C, F>
@@ -46,7 +46,7 @@ where
     fn on_new_span(
         &self,
         attrs: &span::Attributes<'_>,
-        id: &span::Id,
+        id: &span::LocalId,
         ctx: subscribe::Context<'_, C>,
     ) {
         let span = ctx.span(id).expect("span must already exist!");
@@ -88,7 +88,7 @@ where
 
     fn get_context(
         dispatch: &Dispatch,
-        id: &span::Id,
+        id: &span::LocalId,
         f: &mut dyn FnMut(&'static Metadata<'static>, &str) -> bool,
     ) {
         let collector = dispatch
@@ -114,7 +114,7 @@ impl WithContext {
     pub(crate) fn with_context<'a>(
         &self,
         dispatch: &'a Dispatch,
-        id: &span::Id,
+        id: &span::LocalId,
         mut f: impl FnMut(&'static Metadata<'static>, &str) -> bool,
     ) {
         (self.0)(dispatch, id, &mut f)

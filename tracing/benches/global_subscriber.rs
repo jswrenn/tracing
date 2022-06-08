@@ -3,27 +3,27 @@ use std::fmt::Write;
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use tracing::Level;
 
-use tracing::{span, Event, Id, Metadata};
+use tracing::{span, Event, LocalId, Metadata};
 use tracing_core::span::Current;
 
 /// A collector that is enabled but otherwise does nothing.
 struct EnabledCollector;
 
 impl tracing::Collect for EnabledCollector {
-    fn new_span(&self, span: &span::Attributes<'_>) -> Id {
+    fn new_span(&self, span: &span::Attributes<'_>) -> LocalId {
         let _ = span;
-        Id::from_u64(0xDEAD_FACE)
+        LocalId::from_u64(0xDEAD_FACE)
     }
 
     fn event(&self, event: &Event<'_>) {
         let _ = event;
     }
 
-    fn record(&self, span: &Id, values: &span::Record<'_>) {
+    fn record(&self, span: &LocalId, values: &span::Record<'_>) {
         let _ = (span, values);
     }
 
-    fn record_follows_from(&self, span: &Id, follows: &Id) {
+    fn record_follows_from(&self, span: &LocalId, follows: &LocalId) {
         let _ = (span, follows);
     }
 
@@ -32,11 +32,11 @@ impl tracing::Collect for EnabledCollector {
         true
     }
 
-    fn enter(&self, span: &Id) {
+    fn enter(&self, span: &LocalId) {
         let _ = span;
     }
 
-    fn exit(&self, span: &Id) {
+    fn exit(&self, span: &LocalId) {
         let _ = span;
     }
 

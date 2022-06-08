@@ -27,7 +27,7 @@ impl Parent {
     pub fn check_parent_name(
         &self,
         parent_name: Option<&str>,
-        provided_parent: Option<tracing_core::span::Id>,
+        provided_parent: Option<tracing_core::span::GlobalId>,
         ctx: impl std::fmt::Display,
         collector_name: &str,
     ) {

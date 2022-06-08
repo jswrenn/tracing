@@ -45,7 +45,7 @@ use std::{fmt, io, io::Write};
 use tracing_core::{
     event::Event,
     field::Visit,
-    span::{Attributes, Id, Record},
+    span::{Attributes, LocalId, Record},
     Collect, Field, Level, Metadata,
 };
 use tracing_subscriber::{registry::LookupSpan, subscribe::Context};
@@ -211,7 +211,7 @@ impl<C> tracing_subscriber::Subscribe<C> for Subscriber
 where
     C: Collect + for<'span> LookupSpan<'span>,
 {
-    fn on_new_span(&self, attrs: &Attributes, id: &Id, ctx: Context<C>) {
+    fn on_new_span(&self, attrs: &Attributes, id: &LocalId, ctx: Context<C>) {
         let span = ctx.span(id).expect("unknown span");
         let mut buf = Vec::with_capacity(256);
 
@@ -227,7 +227,7 @@ where
         span.extensions_mut().insert(SpanFields(buf));
     }
 
-    fn on_record(&self, id: &Id, values: &Record, ctx: Context<C>) {
+    fn on_record(&self, id: &LocalId, values: &Record, ctx: Context<C>) {
         let span = ctx.span(id).expect("unknown span");
         let mut exts = span.extensions_mut();
         let buf = &mut exts.get_mut::<SpanFields>().expect("missing fields").0;

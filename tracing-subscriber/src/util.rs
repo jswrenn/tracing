@@ -56,7 +56,7 @@ where
     /// [global default subscriber]: tracing::dispatch#setting-the-default-collector
     /// [`log`]: https://crates.io/log
     fn try_init(self) -> Result<(), TryInitError> {
-        dispatch::set_global_default(self.into()).map_err(TryInitError::new)?;
+        dispatch::set(self.into()).map_err(TryInitError::new)?;
 
         // Since we are setting the global default subscriber, we can
         // opportunistically go ahead and set its global max level hint as

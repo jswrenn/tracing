@@ -3,7 +3,7 @@ use crate::subscribe::{Context, Filter};
 use std::{cmp, fmt, marker::PhantomData};
 use tracing_core::{
     collect::Interest,
-    span::{Attributes, Id, Record},
+    span::{Attributes, LocalId, Record},
     LevelFilter, Metadata,
 };
 
@@ -138,31 +138,31 @@ where
     }
 
     #[inline]
-    fn on_new_span(&self, attrs: &Attributes<'_>, id: &Id, ctx: Context<'_, S>) {
+    fn on_new_span(&self, attrs: &Attributes<'_>, id: &LocalId, ctx: Context<'_, S>) {
         self.a.on_new_span(attrs, id, ctx.clone());
         self.b.on_new_span(attrs, id, ctx)
     }
 
     #[inline]
-    fn on_record(&self, id: &Id, values: &Record<'_>, ctx: Context<'_, S>) {
+    fn on_record(&self, id: &LocalId, values: &Record<'_>, ctx: Context<'_, S>) {
         self.a.on_record(id, values, ctx.clone());
         self.b.on_record(id, values, ctx);
     }
 
     #[inline]
-    fn on_enter(&self, id: &Id, ctx: Context<'_, S>) {
+    fn on_enter(&self, id: &LocalId, ctx: Context<'_, S>) {
         self.a.on_enter(id, ctx.clone());
         self.b.on_enter(id, ctx);
     }
 
     #[inline]
-    fn on_exit(&self, id: &Id, ctx: Context<'_, S>) {
+    fn on_exit(&self, id: &LocalId, ctx: Context<'_, S>) {
         self.a.on_exit(id, ctx.clone());
         self.b.on_exit(id, ctx);
     }
 
     #[inline]
-    fn on_close(&self, id: Id, ctx: Context<'_, S>) {
+    fn on_close(&self, id: LocalId, ctx: Context<'_, S>) {
         self.a.on_close(id.clone(), ctx.clone());
         self.b.on_close(id, ctx);
     }
@@ -325,31 +325,31 @@ where
     }
 
     #[inline]
-    fn on_new_span(&self, attrs: &Attributes<'_>, id: &Id, ctx: Context<'_, S>) {
+    fn on_new_span(&self, attrs: &Attributes<'_>, id: &LocalId, ctx: Context<'_, S>) {
         self.a.on_new_span(attrs, id, ctx.clone());
         self.b.on_new_span(attrs, id, ctx)
     }
 
     #[inline]
-    fn on_record(&self, id: &Id, values: &Record<'_>, ctx: Context<'_, S>) {
+    fn on_record(&self, id: &LocalId, values: &Record<'_>, ctx: Context<'_, S>) {
         self.a.on_record(id, values, ctx.clone());
         self.b.on_record(id, values, ctx);
     }
 
     #[inline]
-    fn on_enter(&self, id: &Id, ctx: Context<'_, S>) {
+    fn on_enter(&self, id: &LocalId, ctx: Context<'_, S>) {
         self.a.on_enter(id, ctx.clone());
         self.b.on_enter(id, ctx);
     }
 
     #[inline]
-    fn on_exit(&self, id: &Id, ctx: Context<'_, S>) {
+    fn on_exit(&self, id: &LocalId, ctx: Context<'_, S>) {
         self.a.on_exit(id, ctx.clone());
         self.b.on_exit(id, ctx);
     }
 
     #[inline]
-    fn on_close(&self, id: Id, ctx: Context<'_, S>) {
+    fn on_close(&self, id: LocalId, ctx: Context<'_, S>) {
         self.a.on_close(id.clone(), ctx.clone());
         self.b.on_close(id, ctx);
     }
@@ -422,27 +422,27 @@ where
     }
 
     #[inline]
-    fn on_new_span(&self, attrs: &Attributes<'_>, id: &Id, ctx: Context<'_, S>) {
+    fn on_new_span(&self, attrs: &Attributes<'_>, id: &LocalId, ctx: Context<'_, S>) {
         self.a.on_new_span(attrs, id, ctx);
     }
 
     #[inline]
-    fn on_record(&self, id: &Id, values: &Record<'_>, ctx: Context<'_, S>) {
+    fn on_record(&self, id: &LocalId, values: &Record<'_>, ctx: Context<'_, S>) {
         self.a.on_record(id, values, ctx.clone());
     }
 
     #[inline]
-    fn on_enter(&self, id: &Id, ctx: Context<'_, S>) {
+    fn on_enter(&self, id: &LocalId, ctx: Context<'_, S>) {
         self.a.on_enter(id, ctx);
     }
 
     #[inline]
-    fn on_exit(&self, id: &Id, ctx: Context<'_, S>) {
+    fn on_exit(&self, id: &LocalId, ctx: Context<'_, S>) {
         self.a.on_exit(id, ctx);
     }
 
     #[inline]
-    fn on_close(&self, id: Id, ctx: Context<'_, S>) {
+    fn on_close(&self, id: LocalId, ctx: Context<'_, S>) {
         self.a.on_close(id, ctx);
     }
 }

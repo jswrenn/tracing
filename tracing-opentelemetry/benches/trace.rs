@@ -63,7 +63,7 @@ where
     fn on_new_span(
         &self,
         _attrs: &tracing_core::span::Attributes<'_>,
-        id: &tracing::span::Id,
+        id: &tracing::span::LocalId,
         ctx: tracing_subscriber::subscribe::Context<'_, C>,
     ) {
         let span = ctx.span(id).expect("Span not found, this is a bug");
@@ -71,7 +71,7 @@ where
         extensions.insert(NoDataSpan);
     }
 
-    fn on_close(&self, id: tracing::span::Id, ctx: tracing_subscriber::subscribe::Context<'_, C>) {
+    fn on_close(&self, id: tracing::span::LocalId, ctx: tracing_subscriber::subscribe::Context<'_, C>) {
         let span = ctx.span(&id).expect("Span not found, this is a bug");
         let mut extensions = span.extensions_mut();
 
@@ -90,7 +90,7 @@ where
     fn on_new_span(
         &self,
         attrs: &tracing_core::span::Attributes<'_>,
-        id: &tracing::span::Id,
+        id: &tracing::span::LocalId,
         ctx: tracing_subscriber::subscribe::Context<'_, C>,
     ) {
         let span = ctx.span(id).expect("Span not found, this is a bug");
@@ -100,7 +100,7 @@ where
         );
     }
 
-    fn on_close(&self, id: tracing::span::Id, ctx: tracing_subscriber::subscribe::Context<'_, C>) {
+    fn on_close(&self, id: tracing::span::LocalId, ctx: tracing_subscriber::subscribe::Context<'_, C>) {
         let span = ctx.span(&id).expect("Span not found, this is a bug");
         let mut extensions = span.extensions_mut();
 

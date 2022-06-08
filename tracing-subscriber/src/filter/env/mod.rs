@@ -198,7 +198,7 @@ pub struct EnvFilter {
     statics: directive::Statics,
     dynamics: directive::Dynamics,
     has_dynamics: bool,
-    by_id: RwLock<HashMap<span::Id, directive::SpanMatcher>>,
+    by_id: RwLock<HashMap<span::LocalId, directive::SpanMatcher>>,
     by_cs: RwLock<HashMap<callsite::Identifier, directive::CallsiteMatcher>>,
     scope: ThreadLocal<RefCell<Vec<LevelFilter>>>,
     regex: bool,
@@ -542,7 +542,7 @@ impl EnvFilter {
     /// This is equivalent to calling the [`Subscribe::on_new_span`] or
     /// [`Filter::on_new_span`] methods on `EnvFilter`'s implementations of those
     /// traits, but it does not require the trait to be in scope.
-    pub fn on_new_span<C>(&self, attrs: &span::Attributes<'_>, id: &span::Id, _: Context<'_, C>) {
+    pub fn on_new_span<C>(&self, attrs: &span::Attributes<'_>, id: &span::LocalId, _: Context<'_, C>) {
         let by_cs = try_lock!(self.by_cs.read());
         if let Some(cs) = by_cs.get(&attrs.metadata().callsite()) {
             let span = cs.to_span_match(attrs);
@@ -555,7 +555,7 @@ impl EnvFilter {
     /// This is equivalent to calling the [`Subscribe::on_enter`] or
     /// [`Filter::on_enter`] methods on `EnvFilter`'s implementations of those
     /// traits, but it does not require the trait to be in scope.
-    pub fn on_enter<C>(&self, id: &span::Id, _: Context<'_, C>) {
+    pub fn on_enter<C>(&self, id: &span::LocalId, _: Context<'_, C>) {
         // XXX: This is where _we_ could push IDs to the stack instead, and use
         // that to allow changing the filter while a span is already entered.
         // But that might be much less efficient...
@@ -569,7 +569,7 @@ impl EnvFilter {
     /// This is equivalent to calling the [`Subscribe::on_exit`] or
     /// [`Filter::on_exit`] methods on `EnvFilter`'s implementations of those
     /// traits, but it does not require the trait to be in scope.
-    pub fn on_exit<C>(&self, id: &span::Id, _: Context<'_, C>) {
+    pub fn on_exit<C>(&self, id: &span::LocalId, _: Context<'_, C>) {
         if self.cares_about_span(id) {
             self.scope.get_or_default().borrow_mut().pop();
         }
@@ -580,7 +580,7 @@ impl EnvFilter {
     /// This is equivalent to calling the [`Subscribe::on_close`] or
     /// [`Filter::on_close`] methods on `EnvFilter`'s implementations of those
     /// traits, but it does not require the trait to be in scope.
-    pub fn on_close<C>(&self, id: span::Id, _: Context<'_, C>) {
+    pub fn on_close<C>(&self, id: span::LocalId, _: Context<'_, C>) {
         // If we don't need to acquire a write lock, avoid doing so.
         if !self.cares_about_span(&id) {
             return;
@@ -596,13 +596,13 @@ impl EnvFilter {
     /// This is equivalent to calling the [`Subscribe::on_record`] or
     /// [`Filter::on_record`] methods on `EnvFilter`'s implementations of those
     /// traits, but it does not require the trait to be in scope
-    pub fn on_record<C>(&self, id: &span::Id, values: &span::Record<'_>, _: Context<'_, C>) {
+    pub fn on_record<C>(&self, id: &span::LocalId, values: &span::Record<'_>, _: Context<'_, C>) {
         if let Some(span) = try_lock!(self.by_id.read()).get(id) {
             span.record_update(values);
         }
     }
 
-    fn cares_about_span(&self, span: &span::Id) -> bool {
+    fn cares_about_span(&self, span: &span::LocalId) -> bool {
         let spans = try_lock!(self.by_id.read(), else return false);
         spans.contains_key(span)
     }
@@ -653,27 +653,27 @@ impl<C: Collect> Subscribe<C> for EnvFilter {
     }
 
     #[inline]
-    fn on_new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, ctx: Context<'_, C>) {
+    fn on_new_span(&self, attrs: &span::Attributes<'_>, id: &span::LocalId, ctx: Context<'_, C>) {
         self.on_new_span(attrs, id, ctx)
     }
 
     #[inline]
-    fn on_record(&self, id: &span::Id, values: &span::Record<'_>, ctx: Context<'_, C>) {
+    fn on_record(&self, id: &span::LocalId, values: &span::Record<'_>, ctx: Context<'_, C>) {
         self.on_record(id, values, ctx);
     }
 
     #[inline]
-    fn on_enter(&self, id: &span::Id, ctx: Context<'_, C>) {
+    fn on_enter(&self, id: &span::LocalId, ctx: Context<'_, C>) {
         self.on_enter(id, ctx);
     }
 
     #[inline]
-    fn on_exit(&self, id: &span::Id, ctx: Context<'_, C>) {
+    fn on_exit(&self, id: &span::LocalId, ctx: Context<'_, C>) {
         self.on_exit(id, ctx);
     }
 
     #[inline]
-    fn on_close(&self, id: span::Id, ctx: Context<'_, C>) {
+    fn on_close(&self, id: span::LocalId, ctx: Context<'_, C>) {
         self.on_close(id, ctx);
     }
 }
@@ -699,27 +699,27 @@ feature! {
         }
 
         #[inline]
-        fn on_new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, ctx: Context<'_, C>) {
+        fn on_new_span(&self, attrs: &span::Attributes<'_>, id: &span::LocalId, ctx: Context<'_, C>) {
             self.on_new_span(attrs, id, ctx)
         }
 
         #[inline]
-        fn on_record(&self, id: &span::Id, values: &span::Record<'_>, ctx: Context<'_, C>) {
+        fn on_record(&self, id: &span::LocalId, values: &span::Record<'_>, ctx: Context<'_, C>) {
             self.on_record(id, values, ctx);
         }
 
         #[inline]
-        fn on_enter(&self, id: &span::Id, ctx: Context<'_, C>) {
+        fn on_enter(&self, id: &span::LocalId, ctx: Context<'_, C>) {
             self.on_enter(id, ctx);
         }
 
         #[inline]
-        fn on_exit(&self, id: &span::Id, ctx: Context<'_, C>) {
+        fn on_exit(&self, id: &span::LocalId, ctx: Context<'_, C>) {
             self.on_exit(id, ctx);
         }
 
         #[inline]
-        fn on_close(&self, id: span::Id, ctx: Context<'_, C>) {
+        fn on_close(&self, id: span::LocalId, ctx: Context<'_, C>) {
             self.on_close(id, ctx);
         }
     }
@@ -823,19 +823,19 @@ mod tests {
         fn register_callsite(&self, _: &'static Metadata<'static>) -> collect::Interest {
             collect::Interest::always()
         }
-        fn new_span(&self, _: &span::Attributes<'_>) -> span::Id {
-            span::Id::from_u64(0xDEAD)
+        fn new_span(&self, _: &span::Attributes<'_>) -> span::LocalId {
+            span::LocalId::from_u64(0xDEAD)
         }
         fn event(&self, _event: &Event<'_>) {}
-        fn record(&self, _span: &span::Id, _values: &span::Record<'_>) {}
-        fn record_follows_from(&self, _span: &span::Id, _follows: &span::Id) {}
+        fn record(&self, _span: &span::LocalId, _values: &span::Record<'_>) {}
+        fn record_follows_from(&self, _span: &span::LocalId, _follows: &span::LocalId) {}
 
         #[inline]
         fn enabled(&self, _metadata: &Metadata<'_>) -> bool {
             true
         }
-        fn enter(&self, _span: &span::Id) {}
-        fn exit(&self, _span: &span::Id) {}
+        fn enter(&self, _span: &span::LocalId) {}
+        fn exit(&self, _span: &span::LocalId) {}
         fn current_span(&self) -> span::Current {
             span::Current::unknown()
         }

@@ -387,7 +387,7 @@ where
     C: Collect + for<'span> LookupSpan<'span>,
     W: Write + 'static,
 {
-    fn on_enter(&self, id: &span::Id, ctx: Context<'_, C>) {
+    fn on_enter(&self, id: &span::LocalId, ctx: Context<'_, C>) {
         let samples = self.time_since_last_event();
 
         let first = ctx.span(id).expect("expected: span id exists in registry");
@@ -418,7 +418,7 @@ where
         let _ = writeln!(*self.out.lock().unwrap(), "{}", stack);
     }
 
-    fn on_exit(&self, id: &span::Id, ctx: Context<'_, C>) {
+    fn on_exit(&self, id: &span::LocalId, ctx: Context<'_, C>) {
         let panicking = std::thread::panicking();
         macro_rules! expect {
             ($e:expr, $msg:literal) => {

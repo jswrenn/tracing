@@ -1,8 +1,8 @@
-pub(crate) use tracing_core::span::Id;
+pub(crate) use tracing_core::span::LocalId;
 
 #[derive(Debug)]
 struct ContextId {
-    id: Id,
+    id: LocalId,
     duplicate: bool,
 }
 
@@ -17,14 +17,14 @@ pub(crate) struct SpanStack {
 
 impl SpanStack {
     #[inline]
-    pub(super) fn push(&mut self, id: Id) -> bool {
+    pub(super) fn push(&mut self, id: LocalId) -> bool {
         let duplicate = self.stack.iter().any(|i| i.id == id);
         self.stack.push(ContextId { id, duplicate });
         !duplicate
     }
 
     #[inline]
-    pub(super) fn pop(&mut self, expected_id: &Id) -> bool {
+    pub(super) fn pop(&mut self, expected_id: &LocalId) -> bool {
         if let Some((idx, _)) = self
             .stack
             .iter()
@@ -39,7 +39,7 @@ impl SpanStack {
     }
 
     #[inline]
-    pub(crate) fn iter(&self) -> impl Iterator<Item = &Id> {
+    pub(crate) fn iter(&self) -> impl Iterator<Item = &LocalId> {
         self.stack
             .iter()
             .rev()
@@ -47,19 +47,19 @@ impl SpanStack {
     }
 
     #[inline]
-    pub(crate) fn current(&self) -> Option<&Id> {
+    pub(crate) fn current(&self) -> Option<&LocalId> {
         self.iter().next()
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{Id, SpanStack};
+    use super::{LocalId, SpanStack};
 
     #[test]
     fn pop_last_span() {
         let mut stack = SpanStack::default();
-        let id = Id::from_u64(1);
+        let id = LocalId::from_u64(1);
         stack.push(id.clone());
 
         assert!(stack.pop(&id));
@@ -68,10 +68,10 @@ mod tests {
     #[test]
     fn pop_first_span() {
         let mut stack = SpanStack::default();
-        stack.push(Id::from_u64(1));
-        stack.push(Id::from_u64(2));
+        stack.push(LocalId::from_u64(1));
+        stack.push(LocalId::from_u64(2));
 
-        let id = Id::from_u64(1);
+        let id = LocalId::from_u64(1);
         assert!(stack.pop(&id));
     }
 }

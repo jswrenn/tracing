@@ -1,12 +1,12 @@
-use tracing::{collect::with_default, Id, Level, Span};
+use tracing::{collect::with_default, LocalId, Level, Span};
 use tracing_attributes::instrument;
 use tracing_mock::*;
 
 #[instrument(follows_from = causes, skip(causes))]
-fn with_follows_from_sync(causes: impl IntoIterator<Item = impl Into<Option<Id>>>) {}
+fn with_follows_from_sync(causes: impl IntoIterator<Item = impl Into<Option<LocalId>>>) {}
 
 #[instrument(follows_from = causes, skip(causes))]
-async fn with_follows_from_async(causes: impl IntoIterator<Item = impl Into<Option<Id>>>) {}
+async fn with_follows_from_async(causes: impl IntoIterator<Item = impl Into<Option<LocalId>>>) {}
 
 #[instrument(follows_from = [&Span::current()])]
 fn follows_from_current() {}

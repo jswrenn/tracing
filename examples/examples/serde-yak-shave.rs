@@ -5,7 +5,7 @@ use tracing_core::{
     collect::Collect,
     event::Event,
     metadata::Metadata,
-    span::{Attributes, Current, Id, Record},
+    span::{Attributes, Current, LocalId, Record},
 };
 use tracing_serde::AsSerde;
 
@@ -28,9 +28,9 @@ impl Collect for JsonCollector {
         true
     }
 
-    fn new_span(&self, attrs: &Attributes<'_>) -> Id {
+    fn new_span(&self, attrs: &Attributes<'_>) -> LocalId {
         let id = self.next_id.fetch_add(1, Ordering::Relaxed);
-        let id = Id::from_u64(id as u64);
+        let id = LocalId::from_u64(id as u64);
         let json = json!({
         "new_span": {
             "attributes": attrs.as_serde(),
@@ -40,7 +40,7 @@ impl Collect for JsonCollector {
         id
     }
 
-    fn record(&self, span: &Id, values: &Record<'_>) {
+    fn record(&self, span: &LocalId, values: &Record<'_>) {
         let json = json!({
         "record": {
             "span": span.as_serde(),
@@ -49,7 +49,7 @@ impl Collect for JsonCollector {
         println!("{}", json);
     }
 
-    fn record_follows_from(&self, span: &Id, follows: &Id) {
+    fn record_follows_from(&self, span: &LocalId, follows: &LocalId) {
         let json = json!({
         "record_follows_from": {
             "span": span.as_serde(),
@@ -65,14 +65,14 @@ impl Collect for JsonCollector {
         println!("{}", json);
     }
 
-    fn enter(&self, span: &Id) {
+    fn enter(&self, span: &LocalId) {
         let json = json!({
             "enter": span.as_serde(),
         });
         println!("{}", json);
     }
 
-    fn exit(&self, span: &Id) {
+    fn exit(&self, span: &LocalId) {
         let json = json!({
             "exit": span.as_serde(),
         });

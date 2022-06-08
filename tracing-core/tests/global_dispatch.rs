@@ -5,7 +5,7 @@ use tracing_core::dispatch::*;
 #[test]
 fn global_dispatch() {
     static TEST: TestCollectorA = TestCollectorA;
-    set_global_default(Dispatch::from_static(&TEST)).expect("global dispatch set failed");
+    set(Dispatch::from_static(&TEST)).expect("global dispatch set failed");
     get_default(|current| assert!(current.is::<TestCollectorA>(), "global dispatch get failed"));
 
     #[cfg(feature = "std")]
@@ -25,6 +25,6 @@ fn global_dispatch() {
         )
     });
 
-    set_global_default(Dispatch::from_static(&TEST))
+    set(Dispatch::from_static(&TEST))
         .expect_err("double global dispatch set succeeded");
 }

@@ -30,13 +30,13 @@ impl Collect for TestSubscriber {
         Some(LevelFilter::from_level(Level::INFO))
     }
 
-    fn new_span(&self, _span: &Attributes<'_>) -> span::Id {
-        span::Id::from_u64(42)
+    fn new_span(&self, _span: &Attributes<'_>) -> span::LocalId {
+        span::LocalId::from_u64(42)
     }
 
-    fn record(&self, _span: &span::Id, _values: &Record<'_>) {}
+    fn record(&self, _span: &span::LocalId, _values: &Record<'_>) {}
 
-    fn record_follows_from(&self, _span: &span::Id, _follows: &span::Id) {}
+    fn record_follows_from(&self, _span: &span::LocalId, _follows: &span::LocalId) {}
 
     fn event(&self, event: &Event<'_>) {
         dbg!(event);
@@ -53,9 +53,9 @@ impl Collect for TestSubscriber {
         )
     }
 
-    fn enter(&self, _span: &span::Id) {}
+    fn enter(&self, _span: &span::LocalId) {}
 
-    fn exit(&self, _span: &span::Id) {}
+    fn exit(&self, _span: &span::LocalId) {}
 
     fn current_span(&self) -> span::Current {
         span::Current::unknown()

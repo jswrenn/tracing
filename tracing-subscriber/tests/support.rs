@@ -7,7 +7,7 @@ use self::{
     span::{MockSpan, NewSpan},
 };
 use tracing_core::{
-    span::{Attributes, Id, Record},
+    span::{Attributes, LocalId, Record},
     Collect, Event,
 };
 use tracing_subscriber::{
@@ -46,7 +46,7 @@ pub struct ExpectSubscriberBuilder {
 
 pub struct ExpectSubscriber {
     expected: Arc<Mutex<VecDeque<Expect>>>,
-    current: Mutex<Vec<Id>>,
+    current: Mutex<Vec<LocalId>>,
     name: String,
 }
 
@@ -203,7 +203,7 @@ where
         tracing_core::Interest::always()
     }
 
-    fn on_record(&self, _: &Id, _: &Record<'_>, _: Context<'_, C>) {
+    fn on_record(&self, _: &LocalId, _: &Record<'_>, _: Context<'_, C>) {
         unimplemented!(
             "so far, we don't have any tests that need an `on_record` \
             implementation.\nif you just wrote one that does, feel free to \
@@ -262,11 +262,11 @@ where
         }
     }
 
-    fn on_follows_from(&self, _span: &Id, _follows: &Id, _: Context<'_, C>) {
+    fn on_follows_from(&self, _span: &LocalId, _follows: &LocalId, _: Context<'_, C>) {
         // TODO: it should be possible to expect spans to follow from other spans
     }
 
-    fn on_new_span(&self, span: &Attributes<'_>, id: &Id, cx: Context<'_, C>) {
+    fn on_new_span(&self, span: &Attributes<'_>, id: &LocalId, cx: Context<'_, C>) {
         let meta = span.metadata();
         println!(
             "[{}] new_span: name={:?}; target={:?}; id={:?};",
@@ -290,7 +290,7 @@ where
         }
     }
 
-    fn on_enter(&self, id: &Id, cx: Context<'_, C>) {
+    fn on_enter(&self, id: &LocalId, cx: Context<'_, C>) {
         let span = cx
             .span(id)
             .unwrap_or_else(|| panic!("[{}] no span for ID {:?}", self.name, id));
@@ -305,7 +305,7 @@ where
         self.current.lock().unwrap().push(id.clone());
     }
 
-    fn on_exit(&self, id: &Id, cx: Context<'_, C>) {
+    fn on_exit(&self, id: &LocalId, cx: Context<'_, C>) {
         if std::thread::panicking() {
             // `exit()` can be called in `drop` impls, so we must guard against
             // double panics.
@@ -334,7 +334,7 @@ where
         };
     }
 
-    fn on_close(&self, id: Id, cx: Context<'_, C>) {
+    fn on_close(&self, id: LocalId, cx: Context<'_, C>) {
         if std::thread::panicking() {
             // `try_close` can be called in `drop` impls, so we must guard against
             // double panics.
@@ -380,7 +380,7 @@ where
         }
     }
 
-    fn on_id_change(&self, _old: &Id, _new: &Id, _ctx: Context<'_, C>) {
+    fn on_id_change(&self, _old: &LocalId, _new: &LocalId, _ctx: Context<'_, C>) {
         panic!("well-behaved subscribers should never do this to us, lol");
     }
 }

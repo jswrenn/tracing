@@ -379,17 +379,17 @@ where
     }
 
     #[inline]
-    fn new_span(&self, attrs: &span::Attributes<'_>) -> span::Id {
+    fn new_span(&self, attrs: &span::Attributes<'_>) -> span::LocalId {
         self.inner.new_span(attrs)
     }
 
     #[inline]
-    fn record(&self, span: &span::Id, values: &span::Record<'_>) {
+    fn record(&self, span: &span::LocalId, values: &span::Record<'_>) {
         self.inner.record(span, values)
     }
 
     #[inline]
-    fn record_follows_from(&self, span: &span::Id, follows: &span::Id) {
+    fn record_follows_from(&self, span: &span::LocalId, follows: &span::LocalId) {
         self.inner.record_follows_from(span, follows)
     }
 
@@ -399,13 +399,13 @@ where
     }
 
     #[inline]
-    fn enter(&self, id: &span::Id) {
+    fn enter(&self, id: &span::LocalId) {
         // TODO: add on_enter hook
         self.inner.enter(id);
     }
 
     #[inline]
-    fn exit(&self, id: &span::Id) {
+    fn exit(&self, id: &span::LocalId) {
         self.inner.exit(id);
     }
 
@@ -415,12 +415,12 @@ where
     }
 
     #[inline]
-    fn clone_span(&self, id: &span::Id) -> span::Id {
+    fn clone_span(&self, id: &span::LocalId) -> span::LocalId {
         self.inner.clone_span(id)
     }
 
     #[inline]
-    fn try_close(&self, id: span::Id) -> bool {
+    fn try_close(&self, id: span::LocalId) -> bool {
         self.inner.try_close(id)
     }
 
@@ -444,7 +444,7 @@ where
 {
     type Data = <subscribe::Layered<F, Formatter<N, E, W>> as LookupSpan<'a>>::Data;
 
-    fn span_data(&'a self, id: &span::Id) -> Option<Self::Data> {
+    fn span_data(&'a self, id: &span::LocalId) -> Option<Self::Data> {
         self.inner.span_data(id)
     }
 }

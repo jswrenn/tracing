@@ -1,3 +1,4 @@
+use crate::collect::DelegatingCollector;
 use crate::span::Span;
 use core::pin::Pin;
 use core::task::{Context, Poll};
@@ -358,7 +359,7 @@ impl<T: Future> Future for WithDispatch<T> {
         let this = self.project();
         let dispatch = this.dispatch;
         let future = this.inner;
-        let _default = dispatch::set_default(dispatch);
+        let _default = DelegatingCollector::set(dispatch.clone());
         future.poll(cx)
     }
 }

@@ -300,7 +300,7 @@
 //! [`follows_from`]: Span::follows_from()
 //! [guard]: Entered
 //! [parent]: #span-relationships
-pub use tracing_core::span::{Attributes, Id, Record};
+pub use tracing_core::span::{Attributes, LocalId, GlobalId, Record};
 
 use crate::{
     dispatch::{self, Dispatch},
@@ -318,7 +318,7 @@ use core::{
 pub trait AsId: crate::sealed::Sealed {
     /// Returns the `Id` of the span that `self` corresponds to, or `None` if
     /// this corresponds to a disabled span.
-    fn as_id(&self) -> Option<&Id>;
+    fn as_id(&self) -> Option<&GlobalId>;
 }
 
 /// A handle representing a span, with the capability to enter the span if it
@@ -347,14 +347,8 @@ pub struct Span {
 /// span handles; users should typically not need to interact with it directly.
 #[derive(Debug)]
 pub(crate) struct Inner {
-    /// The span's ID, as provided by `collector`.
-    id: Id,
-
-    /// The collector that will receive events relating to this span.
-    ///
-    /// This should be the same collector that provided this span with its
-    /// `id`.
-    collector: Dispatch,
+    /// The span's ID.
+    id: GlobalId,
 }
 
 /// A guard representing a span which has been entered and is currently
@@ -473,7 +467,7 @@ impl Span {
     /// [field values]: super::field::ValueSet
     /// [`follows_from`]: super::Span::follows_from()
     pub fn child_of(
-        parent: impl Into<Option<Id>>,
+        parent: impl Into<Option<GlobalId>>,
         meta: &'static Metadata<'static>,
         values: &field::ValueSet<'_>,
     ) -> Span {
@@ -486,7 +480,7 @@ impl Span {
     #[inline]
     #[doc(hidden)]
     pub fn child_of_with(
-        parent: impl Into<Option<Id>>,
+        parent: impl Into<Option<GlobalId>>,
         meta: &'static Metadata<'static>,
         values: &field::ValueSet<'_>,
         dispatch: &Dispatch,
@@ -541,7 +535,7 @@ impl Span {
             if let Some((id, meta)) = dispatch.current_span().into_inner() {
                 let id = dispatch.clone_span(&id);
                 Self {
-                    inner: Some(Inner::new(id, dispatch)),
+                    inner: Some(Inner::new(id)),
                     meta: Some(meta),
                 }
             } else {
@@ -557,7 +551,7 @@ impl Span {
     ) -> Span {
         let attrs = &new_span;
         let id = dispatch.new_span(attrs);
-        let inner = Some(Inner::new(id, dispatch));
+        let inner = Some(Inner::new(id));
 
         let span = Self {
             inner,
@@ -1035,7 +1029,7 @@ impl Span {
     #[inline(always)]
     fn do_enter(&self) {
         if let Some(inner) = self.inner.as_ref() {
-            inner.collector.enter(&inner.id);
+            inner.id.dispatch().enter(&inner.id)
         }
 
         if_log_enabled! { crate::Level::TRACE, {
@@ -1052,7 +1046,7 @@ impl Span {
     #[inline(always)]
     fn do_exit(&self) {
         if let Some(inner) = self.inner.as_ref() {
-            inner.collector.exit(&inner.id);
+            inner.id.dispatch().exit(&inner.id());
         }
 
         if_log_enabled! { crate::Level::TRACE, {
@@ -1300,7 +1294,7 @@ impl Span {
     /// let id = span.id();
     /// span.follows_from(id);
     /// ```
-    pub fn follows_from(&self, from: impl Into<Option<Id>>) -> &Self {
+    pub fn follows_from(&self, from: impl Into<Option<GlobalId>>) -> &Self {
         if let Some(ref inner) = self.inner {
             if let Some(from) = from.into() {
                 inner.follows_from(&from);
@@ -1309,8 +1303,8 @@ impl Span {
         self
     }
 
-    /// Returns this span's `Id`, if it is enabled.
-    pub fn id(&self) -> Option<Id> {
+    /// Returns this span's `GlobalId`, if it is enabled.
+    pub fn id(&self) -> Option<GlobalId> {
         self.inner.as_ref().map(Inner::id)
     }
 
@@ -1358,10 +1352,10 @@ impl Span {
     /// if this span is enabled, the provided function is called, and the result is returned.
     /// If the span is disabled, the function is not called, and this method returns `None`
     /// instead.
-    pub fn with_collector<T>(&self, f: impl FnOnce((&Id, &Dispatch)) -> T) -> Option<T> {
+    pub fn with_collector<T>(&self, f: impl FnOnce((&LocalId, &Dispatch)) -> T) -> Option<T> {
         self.inner
             .as_ref()
-            .map(|inner| f((&inner.id, &inner.collector)))
+            .map(|inner| f((&inner.id.local_id(), &inner.id.dispatch())))
     }
 }
 
@@ -1415,25 +1409,25 @@ impl fmt::Debug for Span {
     }
 }
 
-impl<'a> From<&'a Span> for Option<&'a Id> {
+impl<'a> From<&'a Span> for Option<&'a GlobalId> {
     fn from(span: &'a Span) -> Self {
         span.inner.as_ref().map(|inner| &inner.id)
     }
 }
 
-impl<'a> From<&'a Span> for Option<Id> {
+impl<'a> From<&'a Span> for Option<GlobalId> {
     fn from(span: &'a Span) -> Self {
         span.inner.as_ref().map(Inner::id)
     }
 }
 
-impl<'a> From<&'a EnteredSpan> for Option<&'a Id> {
+impl<'a> From<&'a EnteredSpan> for Option<&'a GlobalId> {
     fn from(span: &'a EnteredSpan) -> Self {
         span.inner.as_ref().map(|inner| &inner.id)
     }
 }
 
-impl<'a> From<&'a EnteredSpan> for Option<Id> {
+impl<'a> From<&'a EnteredSpan> for Option<GlobalId> {
     fn from(span: &'a EnteredSpan) -> Self {
         span.inner.as_ref().map(Inner::id)
     }
@@ -1444,10 +1438,9 @@ impl Drop for Span {
     fn drop(&mut self) {
         if let Some(Inner {
             ref id,
-            ref collector,
         }) = self.inner
         {
-            collector.try_close(id.clone());
+            id.dispatch().try_close(id.clone());
         }
 
         if_log_enabled! { crate::Level::TRACE, {
@@ -1480,23 +1473,22 @@ impl Inner {
     /// If this span is disabled, this function will do nothing. Otherwise, it
     /// returns `Ok(())` if the other span was added as a precedent of this
     /// span, or an error if this was not possible.
-    fn follows_from(&self, from: &Id) {
-        self.collector.record_follows_from(&self.id, from)
+    fn follows_from(&self, from: &GlobalId) {
+        self.id.dispatch().record_follows_from(&self.id, from)
     }
 
     /// Returns the span's ID.
-    fn id(&self) -> Id {
+    fn id(&self) -> GlobalId {
         self.id.clone()
     }
 
     fn record(&self, values: &Record<'_>) {
-        self.collector.record(&self.id, values)
+        self.id.dispatch().record(&self.id, values)
     }
 
-    fn new(id: Id, collector: &Dispatch) -> Self {
+    fn new(id: GlobalId) -> Self {
         Inner {
             id,
-            collector: collector.clone(),
         }
     }
 }
@@ -1516,8 +1508,7 @@ impl Hash for Inner {
 impl Clone for Inner {
     fn clone(&self) -> Self {
         Inner {
-            id: self.collector.clone_span(&self.id),
-            collector: self.collector.clone(),
+            id: self.id.dispatch().clone_span(&self.id()),
         }
     }
 }
@@ -1525,8 +1516,8 @@ impl Clone for Inner {
 // ===== impl Entered =====
 
 impl EnteredSpan {
-    /// Returns this span's `Id`, if it is enabled.
-    pub fn id(&self) -> Option<Id> {
+    /// Returns this span's `GlobalId`, if it is enabled.
+    pub fn id(&self) -> Option<GlobalId> {
         self.inner.as_ref().map(Inner::id)
     }
 

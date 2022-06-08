@@ -185,7 +185,7 @@ where
     /// If this returns `None`, then no span exists for that ID (either it has
     /// closed or the ID is invalid).
     #[inline]
-    pub fn metadata(&self, id: &span::Id) -> Option<&'static Metadata<'static>>
+    pub fn metadata(&self, id: &span::LocalId) -> Option<&'static Metadata<'static>>
     where
         C: for<'lookup> LookupSpan<'lookup>,
     {
@@ -208,7 +208,7 @@ where
     ///
     /// [stored data]: ../registry/struct.SpanRef.html
     #[inline]
-    pub fn span(&self, id: &span::Id) -> Option<registry::SpanRef<'_, C>>
+    pub fn span(&self, id: &span::LocalId) -> Option<registry::SpanRef<'_, C>>
     where
         C: for<'lookup> LookupSpan<'lookup>,
     {
@@ -231,7 +231,7 @@ where
     /// declaration</a> for details.
     /// </pre></div>
     #[inline]
-    pub fn exists(&self, id: &span::Id) -> bool
+    pub fn exists(&self, id: &span::LocalId) -> bool
     where
         C: for<'lookup> LookupSpan<'lookup>,
     {
@@ -340,7 +340,7 @@ where
     /// </pre></div>
     ///
     /// [stored data]: ../registry/struct.SpanRef.html
-    pub fn span_scope(&self, id: &span::Id) -> Option<registry::Scope<'_, C>>
+    pub fn span_scope(&self, id: &span::LocalId) -> Option<registry::Scope<'_, C>>
     where
         C: for<'lookup> LookupSpan<'lookup>,
     {
@@ -388,7 +388,7 @@ where
     }
 
     #[cfg(all(feature = "registry", feature = "std"))]
-    pub(crate) fn is_enabled_for(&self, span: &span::Id, filter: FilterId) -> bool
+    pub(crate) fn is_enabled_for(&self, span: &span::LocalId, filter: FilterId) -> bool
     where
         C: for<'lookup> LookupSpan<'lookup>,
     {
@@ -396,7 +396,7 @@ where
     }
 
     #[cfg(all(feature = "registry", feature = "std"))]
-    pub(crate) fn if_enabled_for(self, span: &span::Id, filter: FilterId) -> Option<Self>
+    pub(crate) fn if_enabled_for(self, span: &span::LocalId, filter: FilterId) -> Option<Self>
     where
         C: for<'lookup> LookupSpan<'lookup>,
     {
@@ -408,7 +408,7 @@ where
     }
 
     #[cfg(all(feature = "registry", feature = "std"))]
-    fn is_enabled_inner(&self, span: &span::Id, filter: FilterId) -> Option<bool>
+    fn is_enabled_inner(&self, span: &span::LocalId, filter: FilterId) -> Option<bool>
     where
         C: for<'lookup> LookupSpan<'lookup>,
     {

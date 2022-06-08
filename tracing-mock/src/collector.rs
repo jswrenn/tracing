@@ -16,7 +16,7 @@ use std::{
 use tracing::{
     collect::Interest,
     level_filters::LevelFilter,
-    span::{self, Attributes, Id},
+    span::{self, Attributes, GlobalId},
     Collect, Event, Metadata,
 };
 
@@ -43,9 +43,9 @@ struct SpanState {
 }
 
 struct Running<F: Fn(&Metadata<'_>) -> bool> {
-    spans: Mutex<HashMap<Id, SpanState>>,
+    spans: Mutex<HashMap<GlobalId, SpanState>>,
     expected: Arc<Mutex<VecDeque<Expect>>>,
-    current: Mutex<Vec<Id>>,
+    current: Mutex<Vec<GlobalId>>,
     ids: AtomicUsize,
     max_level: Option<LevelFilter>,
     filter: F,
@@ -213,7 +213,7 @@ where
         self.max_level
     }
 
-    fn record(&self, id: &Id, values: &span::Record<'_>) {
+    fn record(&self, id: &GlobalId, values: &span::Record<'_>) {
         let spans = self.spans.lock().unwrap();
         let mut expected = self.expected.lock().unwrap();
         let span = spans
@@ -259,7 +259,7 @@ where
         }
     }
 
-    fn record_follows_from(&self, consequence_id: &Id, cause_id: &Id) {
+    fn record_follows_from(&self, consequence_id: &GlobalId, cause_id: &GlobalId) {
         let spans = self.spans.lock().unwrap();
         if let Some(consequence_span) = spans.get(consequence_id) {
             if let Some(cause_span) = spans.get(cause_id) {
@@ -292,10 +292,10 @@ where
         };
     }
 
-    fn new_span(&self, span: &Attributes<'_>) -> Id {
+    fn new_span(&self, span: &Attributes<'_>) -> GlobalId {
         let meta = span.metadata();
         let id = self.ids.fetch_add(1, Ordering::SeqCst);
-        let id = Id::from_u64(id as u64);
+        let id = GlobalId::from_u64(id as u64);
         println!(
             "[{}] new_span: name={:?}; target={:?}; id={:?};",
             self.name,
@@ -329,7 +329,7 @@ where
         id
     }
 
-    fn enter(&self, id: &Id) {
+    fn enter(&self, id: &GlobalId) {
         let spans = self.spans.lock().unwrap();
         if let Some(span) = spans.get(id) {
             println!("[{}] enter: {}; id={:?};", self.name, span.name, id);
@@ -346,7 +346,7 @@ where
         self.current.lock().unwrap().push(id.clone());
     }
 
-    fn exit(&self, id: &Id) {
+    fn exit(&self, id: &GlobalId) {
         if std::thread::panicking() {
             // `exit()` can be called in `drop` impls, so we must guard against
             // double panics.
@@ -378,7 +378,7 @@ where
         };
     }
 
-    fn clone_span(&self, id: &Id) -> Id {
+    fn clone_span(&self, id: &GlobalId) -> GlobalId {
         let name = self.spans.lock().unwrap().get_mut(id).map(|span| {
             let name = span.name;
             println!(
@@ -410,7 +410,7 @@ where
         id.clone()
     }
 
-    fn drop_span(&self, id: Id) {
+    fn drop_span(&self, id: GlobalId) {
         let mut is_event = false;
         let name = if let Ok(mut spans) = self.spans.try_lock() {
             spans.get_mut(&id).map(|span| {

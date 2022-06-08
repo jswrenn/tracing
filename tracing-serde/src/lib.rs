@@ -183,7 +183,7 @@ use tracing_core::{
     event::Event,
     field::{Field, FieldSet, Visit},
     metadata::{Level, Metadata},
-    span::{Attributes, Id, Record},
+    span::{Attributes, LocalId, Record},
 };
 
 pub mod fields;
@@ -241,7 +241,7 @@ impl<'a> Serialize for SerializeLevel<'a> {
 }
 
 #[derive(Debug)]
-pub struct SerializeId<'a>(&'a Id);
+pub struct SerializeId<'a>(&'a LocalId);
 
 impl<'a> Serialize for SerializeId<'a> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
@@ -509,7 +509,7 @@ impl<'a> AsSerde<'a> for tracing_core::span::Attributes<'a> {
     }
 }
 
-impl<'a> AsSerde<'a> for tracing_core::span::Id {
+impl<'a> AsSerde<'a> for tracing_core::span::LocalId {
     type Serializable = SerializeId<'a>;
 
     fn as_serde(&'a self) -> Self::Serializable {
@@ -537,7 +537,7 @@ impl<'a> self::sealed::Sealed for Event<'a> {}
 
 impl<'a> self::sealed::Sealed for Attributes<'a> {}
 
-impl self::sealed::Sealed for Id {}
+impl self::sealed::Sealed for LocalId {}
 
 impl self::sealed::Sealed for Level {}
 

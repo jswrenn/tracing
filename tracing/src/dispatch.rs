@@ -18,8 +18,8 @@
 //!
 //! To use another collector implementation, it must be set as the default.
 //! There are two methods for doing so: [`with_default`] and
-//! [`set_global_default`]. `with_default` sets the default collector for the
-//! duration of a scope, while `set_global_default` sets a default collector
+//! [`set`]. `with_default` sets the default collector for the
+//! duration of a scope, while `set` sets a default collector
 //! for the entire process.
 //!
 //! To use either of these functions, we must first wrap our collector in a
@@ -85,9 +85,9 @@
 //! It's important to note that `with_default` will not propagate the current
 //! thread's default collector to any threads spawned within the `with_default`
 //! block. To propagate the default collector to new threads, either use
-//! `with_default` from the new thread, or use `set_global_default`.
+//! `with_default` from the new thread, or use `set`.
 //!
-//! As an alternative to `with_default`, we can use [`set_global_default`] to
+//! As an alternative to `with_default`, we can use [`set`] to
 //! set a `Dispatch` as the default for all threads, for the lifetime of the
 //! program. For example:
 //! ```rust
@@ -114,8 +114,8 @@
 //! // no default collector
 //!
 //! # #[cfg(feature = "alloc")]
-//! dispatch::set_global_default(my_dispatch)
-//!     // `set_global_default` will return an error if the global default
+//! dispatch::set(my_dispatch)
+//!     // `set` will return an error if the global default
 //!     // collector has already been set.
 //!     .expect("global default was already set!");
 //!
@@ -126,7 +126,7 @@
 //!
 //! **Note**: The thread-local scoped dispatcher (`with_default`)
 //! requires the Rust standard library. `no_std` users should
-//! use [`set_global_default()`] instead.
+//! use [`set()`] instead.
 //!
 //! </pre></div>
 //!
@@ -138,17 +138,9 @@
 //! instrumentation.
 //!
 //! [`Collect`]: tracing_core::Collect
-#[cfg(feature = "std")]
-#[cfg_attr(docsrs, doc(cfg(feature = "std")))]
-pub use tracing_core::dispatch::set_default;
-#[cfg(feature = "std")]
-#[cfg_attr(docsrs, doc(cfg(feature = "std")))]
-pub use tracing_core::dispatch::with_default;
-#[cfg(feature = "std")]
-#[cfg_attr(docsrs, doc(cfg(feature = "std")))]
-pub use tracing_core::dispatch::DefaultGuard;
+
 pub use tracing_core::dispatch::{
-    get_default, set_global_default, Dispatch, SetGlobalDefaultError,
+    get_default,set, Dispatch, SetGlobalDefaultError,
 };
 
 /// Private API for internal use by tracing's macros.

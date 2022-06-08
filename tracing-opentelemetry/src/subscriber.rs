@@ -9,7 +9,7 @@ use std::marker;
 use std::thread;
 use std::time::{Instant, SystemTime};
 use std::{any::TypeId, ptr::NonNull};
-use tracing_core::span::{self, Attributes, Id, Record};
+use tracing_core::span::{self, Attributes, LocalId, Record};
 use tracing_core::{field, Collect, Event};
 #[cfg(feature = "tracing-log")]
 use tracing_log::NormalizeEvent;
@@ -73,7 +73,7 @@ where
 //
 // See https://github.com/tokio-rs/tracing/blob/4dad420ee1d4607bad79270c1520673fa6266a3d/tracing-error/src/layer.rs
 pub(crate) struct WithContext(
-    fn(&tracing::Dispatch, &span::Id, f: &mut dyn FnMut(&mut OtelData, &dyn PreSampledTracer)),
+    fn(&tracing::Dispatch, &span::LocalId, f: &mut dyn FnMut(&mut OtelData, &dyn PreSampledTracer)),
 );
 
 impl WithContext {
@@ -82,7 +82,7 @@ impl WithContext {
     pub(crate) fn with_context<'a>(
         &self,
         dispatch: &'a tracing::Dispatch,
-        id: &span::Id,
+        id: &span::LocalId,
         mut f: impl FnMut(&mut OtelData, &dyn PreSampledTracer),
     ) {
         (self.0)(dispatch, id, &mut f)
@@ -432,7 +432,7 @@ where
 
     fn get_context(
         dispatch: &tracing::Dispatch,
-        id: &span::Id,
+        id: &span::LocalId,
         f: &mut dyn FnMut(&mut OtelData, &dyn PreSampledTracer),
     ) {
         let subscriber = dispatch
@@ -485,7 +485,7 @@ where
     ///
     /// [OpenTelemetry `Span`]: opentelemetry::trace::Span
     /// [tracing `Span`]: tracing::Span
-    fn on_new_span(&self, attrs: &Attributes<'_>, id: &span::Id, ctx: Context<'_, C>) {
+    fn on_new_span(&self, attrs: &Attributes<'_>, id: &span::LocalId, ctx: Context<'_, C>) {
         let span = ctx.span(id).expect("Span not found, this is a bug");
         let mut extensions = span.extensions_mut();
 
@@ -541,7 +541,7 @@ where
         extensions.insert(OtelData { builder, parent_cx });
     }
 
-    fn on_enter(&self, id: &span::Id, ctx: Context<'_, C>) {
+    fn on_enter(&self, id: &span::LocalId, ctx: Context<'_, C>) {
         if !self.tracked_inactivity {
             return;
         }
@@ -556,7 +556,7 @@ where
         }
     }
 
-    fn on_exit(&self, id: &span::Id, ctx: Context<'_, C>) {
+    fn on_exit(&self, id: &span::LocalId, ctx: Context<'_, C>) {
         if !self.tracked_inactivity {
             return;
         }
@@ -574,7 +574,7 @@ where
     /// Record OpenTelemetry [`attributes`] for the given values.
     ///
     /// [`attributes`]: opentelemetry::trace::SpanBuilder::attributes
-    fn on_record(&self, id: &Id, values: &Record<'_>, ctx: Context<'_, C>) {
+    fn on_record(&self, id: &LocalId, values: &Record<'_>, ctx: Context<'_, C>) {
         let span = ctx.span(id).expect("Span not found, this is a bug");
         let mut extensions = span.extensions_mut();
         if let Some(data) = extensions.get_mut::<OtelData>() {
@@ -582,7 +582,7 @@ where
         }
     }
 
-    fn on_follows_from(&self, id: &Id, follows: &Id, ctx: Context<C>) {
+    fn on_follows_from(&self, id: &LocalId, follows: &LocalId, ctx: Context<C>) {
         let span = ctx.span(id).expect("Span not found, this is a bug");
         let mut extensions = span.extensions_mut();
         let data = extensions
@@ -700,7 +700,7 @@ where
     /// Exports an OpenTelemetry [`Span`] on close.
     ///
     /// [`Span`]: opentelemetry::trace::Span
-    fn on_close(&self, id: span::Id, ctx: Context<'_, C>) {
+    fn on_close(&self, id: span::LocalId, ctx: Context<'_, C>) {
         let span = ctx.span(&id).expect("Span not found, this is a bug");
         let mut extensions = span.extensions_mut();
 

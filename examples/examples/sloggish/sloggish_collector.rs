@@ -1,7 +1,7 @@
 use ansi_term::{Color, Style};
 use tracing::{
     field::{Field, Visit},
-    Collect, Id, Level, Metadata,
+    Collect, LocalId, Level, Metadata,
 };
 use tracing_core::span::Current;
 
@@ -21,25 +21,25 @@ use std::{
 /// Tracks the currently executing span on a per-thread basis.
 #[derive(Clone)]
 pub struct CurrentSpanPerThread {
-    current: &'static thread::LocalKey<RefCell<Vec<Id>>>,
+    current: &'static thread::LocalKey<RefCell<Vec<LocalId>>>,
 }
 
 impl CurrentSpanPerThread {
     pub fn new() -> Self {
         thread_local! {
-            static CURRENT: RefCell<Vec<Id>> = RefCell::new(vec![]);
+            static CURRENT: RefCell<Vec<LocalId>> = RefCell::new(vec![]);
         };
         Self { current: &CURRENT }
     }
 
     /// Returns the [`Id`](::Id) of the span in which the current thread is
     /// executing, or `None` if it is not inside of a span.
-    pub fn id(&self) -> Option<Id> {
+    pub fn id(&self) -> Option<LocalId> {
         self.current
             .with(|current| current.borrow().last().cloned())
     }
 
-    pub fn enter(&self, span: Id) {
+    pub fn enter(&self, span: LocalId) {
         self.current.with(|current| {
             current.borrow_mut().push(span);
         })
@@ -58,13 +58,13 @@ pub struct SloggishCollector {
     current: CurrentSpanPerThread,
     indent_amount: usize,
     stderr: io::Stderr,
-    stack: Mutex<Vec<Id>>,
-    spans: Mutex<HashMap<Id, Span>>,
+    stack: Mutex<Vec<LocalId>>,
+    spans: Mutex<HashMap<LocalId, Span>>,
     ids: AtomicUsize,
 }
 
 struct Span {
-    parent: Option<Id>,
+    parent: Option<LocalId>,
     kvs: Vec<(&'static str, String)>,
     metadata: &'static Metadata<'static>,
 }
@@ -90,7 +90,7 @@ impl<'a> fmt::Display for ColorLevel<'a> {
 }
 
 impl Span {
-    fn new(parent: Option<Id>, attrs: &tracing::span::Attributes<'_>) -> Self {
+    fn new(parent: Option<LocalId>, attrs: &tracing::span::Attributes<'_>) -> Self {
         let mut span = Self {
             parent,
             kvs: Vec::new(),
@@ -189,26 +189,26 @@ impl Collect for SloggishCollector {
         true
     }
 
-    fn new_span(&self, span: &tracing::span::Attributes<'_>) -> tracing::Id {
+    fn new_span(&self, span: &tracing::span::Attributes<'_>) -> tracing::LocalId {
         let next = self.ids.fetch_add(1, Ordering::SeqCst) as u64;
-        let id = tracing::Id::from_u64(next);
+        let id = tracing::LocalId::from_u64(next);
         let span = Span::new(self.current.id(), span);
         self.spans.lock().unwrap().insert(id.clone(), span);
         id
     }
 
-    fn record(&self, span: &tracing::Id, values: &tracing::span::Record<'_>) {
+    fn record(&self, span: &tracing::LocalId, values: &tracing::span::Record<'_>) {
         let mut spans = self.spans.lock().expect("mutex poisoned!");
         if let Some(span) = spans.get_mut(span) {
             values.record(span);
         }
     }
 
-    fn record_follows_from(&self, _span: &tracing::Id, _follows: &tracing::Id) {
+    fn record_follows_from(&self, _span: &tracing::LocalId, _follows: &tracing::LocalId) {
         // unimplemented
     }
 
-    fn enter(&self, span_id: &tracing::Id) {
+    fn enter(&self, span_id: &tracing::LocalId) {
         self.current.enter(span_id.clone());
         let mut stderr = self.stderr.lock();
         let mut stack = self.stack.lock().unwrap();
@@ -258,12 +258,12 @@ impl Collect for SloggishCollector {
     }
 
     #[inline]
-    fn exit(&self, _span: &tracing::Id) {
+    fn exit(&self, _span: &tracing::LocalId) {
         // TODO: unify stack with current span
         self.current.exit();
     }
 
-    fn try_close(&self, _id: tracing::Id) -> bool {
+    fn try_close(&self, _id: tracing::LocalId) -> bool {
         // TODO: GC unneeded spans.
         false
     }

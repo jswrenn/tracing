@@ -16,7 +16,7 @@ use std::{
 };
 use tracing_core::{
     dispatch::{self, Dispatch},
-    span::{self, Current, Id},
+    span::{self, Current, LocalId},
     Collect, Event, Interest, Metadata,
 };
 
@@ -123,7 +123,7 @@ pub struct Data<'a> {
 struct DataInner {
     filter_map: FilterMap,
     metadata: &'static Metadata<'static>,
-    parent: Option<Id>,
+    parent: Option<LocalId>,
     ref_count: AtomicUsize,
     // The span's `Extensions` typemap. Allocations for the `HashMap` backing
     // this are pooled and reused in place.
@@ -143,12 +143,12 @@ impl Default for Registry {
 }
 
 #[inline]
-fn idx_to_id(idx: usize) -> Id {
-    Id::from_u64(idx as u64 + 1)
+fn idx_to_id(idx: usize) -> LocalId {
+    LocalId::from_u64(idx as u64 + 1)
 }
 
 #[inline]
-fn id_to_idx(id: &Id) -> usize {
+fn id_to_idx(id: &LocalId) -> usize {
     id.into_u64() as usize - 1
 }
 
@@ -174,13 +174,13 @@ fn id_to_idx(id: &Id) -> usize {
 ///    _does not_ remove the span from the [`Registry`].
 ///
 pub(crate) struct CloseGuard<'a> {
-    id: Id,
+    id: LocalId,
     registry: &'a Registry,
     is_closing: bool,
 }
 
 impl Registry {
-    fn get(&self, id: &Id) -> Option<Ref<'_, DataInner>> {
+    fn get(&self, id: &LocalId) -> Option<Ref<'_, DataInner>> {
         self.spans.get(id_to_idx(id))
     }
 
@@ -188,7 +188,7 @@ impl Registry {
     /// processed an `on_close` notification via the `CLOSE_COUNT` thread-local.
     /// For additional details, see [`CloseGuard`].
     ///
-    pub(crate) fn start_close(&self, id: Id) -> CloseGuard<'_> {
+    pub(crate) fn start_close(&self, id: LocalId) -> CloseGuard<'_> {
         CLOSE_COUNT.with(|count| {
             let c = count.get();
             count.set(c + 1);
@@ -234,7 +234,7 @@ impl Collect for Registry {
     }
 
     #[inline]
-    fn new_span(&self, attrs: &span::Attributes<'_>) -> span::Id {
+    fn new_span(&self, attrs: &span::Attributes<'_>) -> span::LocalId {
         let parent = if attrs.is_root() {
             None
         } else if attrs.is_contextual() {
@@ -271,15 +271,15 @@ impl Collect for Registry {
     /// This is intentionally not implemented, as recording fields
     /// on a span is the responsibility of subscribers atop of this registry.
     #[inline]
-    fn record(&self, _: &span::Id, _: &span::Record<'_>) {}
+    fn record(&self, _: &span::LocalId, _: &span::Record<'_>) {}
 
-    fn record_follows_from(&self, _span: &span::Id, _follows: &span::Id) {}
+    fn record_follows_from(&self, _span: &span::LocalId, _follows: &span::LocalId) {}
 
     /// This is intentionally not implemented, as recording events
     /// is the responsibility of subscribers atop of this registry.
     fn event(&self, _: &Event<'_>) {}
 
-    fn enter(&self, id: &span::Id) {
+    fn enter(&self, id: &span::LocalId) {
         if self
             .current_spans
             .get_or_default()
@@ -290,7 +290,7 @@ impl Collect for Registry {
         }
     }
 
-    fn exit(&self, id: &span::Id) {
+    fn exit(&self, id: &span::LocalId) {
         if let Some(spans) = self.current_spans.get() {
             if spans.borrow_mut().pop(id) {
                 dispatch::get_default(|dispatch| dispatch.try_close(id.clone()));
@@ -298,7 +298,7 @@ impl Collect for Registry {
         }
     }
 
-    fn clone_span(&self, id: &span::Id) -> span::Id {
+    fn clone_span(&self, id: &span::LocalId) -> span::LocalId {
         let span = self
             .get(id)
             .unwrap_or_else(|| panic!("tried to clone {:?}, but no span exists with that ID", id));
@@ -332,7 +332,7 @@ impl Collect for Registry {
     /// removes the span if it is zero.
     ///
     /// The allocated span slot will be reused when a new span is created.
-    fn try_close(&self, id: span::Id) -> bool {
+    fn try_close(&self, id: span::LocalId) -> bool {
         let span = match self.get(&id) {
             Some(span) => span,
             None if std::thread::panicking() => return false,
@@ -358,7 +358,7 @@ impl Collect for Registry {
 impl<'a> LookupSpan<'a> for Registry {
     type Data = Data<'a>;
 
-    fn span_data(&'a self, id: &Id) -> Option<Self::Data> {
+    fn span_data(&'a self, id: &LocalId) -> Option<Self::Data> {
         let inner = self.get(id)?;
         Some(Data { inner })
     }
@@ -406,7 +406,7 @@ impl<'a> Drop for CloseGuard<'a> {
 // === impl Data ===
 
 impl<'a> SpanData<'a> for Data<'a> {
-    fn id(&self) -> Id {
+    fn id(&self) -> LocalId {
         idx_to_id(self.inner.key())
     }
 
@@ -414,7 +414,7 @@ impl<'a> SpanData<'a> for Data<'a> {
         (*self).inner.metadata
     }
 
-    fn parent(&self) -> Option<&Id> {
+    fn parent(&self) -> Option<&LocalId> {
         self.inner.parent.as_ref()
     }
 
@@ -530,7 +530,7 @@ mod tests {
     use tracing::{self, collect::with_default};
     use tracing_core::{
         dispatch,
-        span::{Attributes, Id},
+        span::{Attributes, LocalId},
         Collect,
     };
 
@@ -543,7 +543,7 @@ mod tests {
     where
         C: Collect + for<'a> LookupSpan<'a>,
     {
-        fn on_close(&self, id: Id, ctx: Context<'_, C>) {
+        fn on_close(&self, id: LocalId, ctx: Context<'_, C>) {
             dbg!(format_args!("closing {:?}", id));
             assert!(&ctx.span(&id).is_some());
         }
@@ -591,7 +591,7 @@ mod tests {
     where
         C: Collect + for<'a> LookupSpan<'a>,
     {
-        fn on_new_span(&self, _: &Attributes<'_>, id: &Id, ctx: Context<'_, C>) {
+        fn on_new_span(&self, _: &Attributes<'_>, id: &LocalId, ctx: Context<'_, C>) {
             let span = ctx.span(id).expect("Missing span; this is a bug");
             let mut lock = self.inner.lock().unwrap();
             let is_removed = Arc::new(());
@@ -605,7 +605,7 @@ mod tests {
             extensions.insert(SetRemoved(is_removed));
         }
 
-        fn on_close(&self, id: Id, ctx: Context<'_, C>) {
+        fn on_close(&self, id: LocalId, ctx: Context<'_, C>) {
             let span = if let Some(span) = ctx.span(&id) {
                 span
             } else {

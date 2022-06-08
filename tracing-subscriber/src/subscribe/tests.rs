@@ -11,15 +11,15 @@ impl Collect for NopCollector {
         false
     }
 
-    fn new_span(&self, _: &span::Attributes<'_>) -> span::Id {
-        span::Id::from_u64(1)
+    fn new_span(&self, _: &span::Attributes<'_>) -> span::LocalId {
+        span::LocalId::from_u64(1)
     }
 
-    fn record(&self, _: &span::Id, _: &span::Record<'_>) {}
-    fn record_follows_from(&self, _: &span::Id, _: &span::Id) {}
+    fn record(&self, _: &span::LocalId, _: &span::Record<'_>) {}
+    fn record_follows_from(&self, _: &span::LocalId, _: &span::LocalId) {}
     fn event(&self, _: &Event<'_>) {}
-    fn enter(&self, _: &span::Id) {}
-    fn exit(&self, _: &span::Id) {}
+    fn enter(&self, _: &span::LocalId) {}
+    fn exit(&self, _: &span::LocalId) {}
 
     fn current_span(&self) -> span::Current {
         todo!()
@@ -56,15 +56,15 @@ impl Collect for StringCollector {
         false
     }
 
-    fn new_span(&self, _: &span::Attributes<'_>) -> span::Id {
-        span::Id::from_u64(1)
+    fn new_span(&self, _: &span::Attributes<'_>) -> span::LocalId {
+        span::LocalId::from_u64(1)
     }
 
-    fn record(&self, _: &span::Id, _: &span::Record<'_>) {}
-    fn record_follows_from(&self, _: &span::Id, _: &span::Id) {}
+    fn record(&self, _: &span::LocalId, _: &span::Record<'_>) {}
+    fn record_follows_from(&self, _: &span::LocalId, _: &span::LocalId) {}
     fn event(&self, _: &Event<'_>) {}
-    fn enter(&self, _: &span::Id) {}
-    fn exit(&self, _: &span::Id) {}
+    fn enter(&self, _: &span::LocalId) {}
+    fn exit(&self, _: &span::LocalId) {}
 
     fn current_span(&self) -> span::Current {
         todo!()

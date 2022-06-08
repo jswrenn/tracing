@@ -60,7 +60,7 @@
 //! [lookup]: crate::subscribe::Context::span()
 use core::fmt::Debug;
 
-use tracing_core::{field::FieldSet, span::Id, Metadata};
+use tracing_core::{field::FieldSet, span::LocalId, Metadata};
 
 feature! {
     #![feature = "std"]
@@ -108,7 +108,7 @@ pub trait LookupSpan<'a> {
     ///
     /// </pre></div>
     ///
-    fn span_data(&'a self, id: &Id) -> Option<Self::Data>;
+    fn span_data(&'a self, id: &LocalId) -> Option<Self::Data>;
 
     /// Returns a [`SpanRef`] for the span with the given `Id`, if it exists.
     ///
@@ -120,7 +120,7 @@ pub trait LookupSpan<'a> {
     /// should only implement `span_data`.
     ///
     /// [`span_data`]: LookupSpan::span_data()
-    fn span(&'a self, id: &Id) -> Option<SpanRef<'_, Self>>
+    fn span(&'a self, id: &LocalId) -> Option<SpanRef<'_, Self>>
     where
         Self: Sized,
     {
@@ -161,13 +161,13 @@ pub trait LookupSpan<'a> {
 /// A stored representation of data associated with a span.
 pub trait SpanData<'a> {
     /// Returns this span's ID.
-    fn id(&self) -> Id;
+    fn id(&self) -> LocalId;
 
     /// Returns a reference to the span's `Metadata`.
     fn metadata(&self) -> &'static Metadata<'static>;
 
     /// Returns a reference to the ID
-    fn parent(&self) -> Option<&Id>;
+    fn parent(&self) -> Option<&LocalId>;
 
     /// Returns a reference to this span's `Extensions`.
     ///
@@ -226,7 +226,7 @@ pub struct SpanRef<'a, R: LookupSpan<'a>> {
 #[derive(Debug)]
 pub struct Scope<'a, R> {
     registry: &'a R,
-    next: Option<Id>,
+    next: Option<LocalId>,
 
     #[cfg(all(feature = "registry", feature = "std"))]
     filter: FilterId,
@@ -344,7 +344,7 @@ where
     R: LookupSpan<'a>,
 {
     /// Returns this span's ID.
-    pub fn id(&self) -> Id {
+    pub fn id(&self) -> LocalId {
         self.data.id()
     }
 
@@ -373,7 +373,7 @@ where
             use. use `.parent().map(SpanRef::id)` instead.",
         since = "0.2.21"
     )]
-    pub fn parent_id(&self) -> Option<&Id> {
+    pub fn parent_id(&self) -> Option<&LocalId> {
         // XXX(eliza): this doesn't work with PSF because the ID is potentially
         // borrowed from a parent we got from the registry, rather than from
         // `self`, so we can't return a borrowed parent. so, right now, we just
@@ -578,7 +578,7 @@ mod tests {
         where
             S: Collect + for<'lookup> LookupSpan<'lookup>,
         {
-            fn on_enter(&self, id: &span::Id, ctx: Context<'_, S>) {
+            fn on_enter(&self, id: &span::LocalId, ctx: Context<'_, S>) {
                 let span = ctx.span(id).unwrap();
                 let scope = span.scope().map(|span| span.name()).collect::<Vec<_>>();
                 *self.last_entered_scope.lock().unwrap() = scope;
@@ -613,7 +613,7 @@ mod tests {
         where
             S: Collect + for<'lookup> LookupSpan<'lookup>,
         {
-            fn on_enter(&self, id: &span::Id, ctx: Context<'_, S>) {
+            fn on_enter(&self, id: &span::LocalId, ctx: Context<'_, S>) {
                 let span = ctx.span(id).unwrap();
                 let scope = span
                     .scope()

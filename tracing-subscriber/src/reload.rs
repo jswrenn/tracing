@@ -85,7 +85,7 @@ where
     fn on_new_span(
         &self,
         attrs: &span::Attributes<'_>,
-        id: &span::Id,
+        id: &span::LocalId,
         ctx: subscribe::Context<'_, C>,
     ) {
         try_lock!(self.inner.read()).on_new_span(attrs, id, ctx)
@@ -94,7 +94,7 @@ where
     #[inline]
     fn on_record(
         &self,
-        span: &span::Id,
+        span: &span::LocalId,
         values: &span::Record<'_>,
         ctx: subscribe::Context<'_, C>,
     ) {
@@ -102,7 +102,7 @@ where
     }
 
     #[inline]
-    fn on_follows_from(&self, span: &span::Id, follows: &span::Id, ctx: subscribe::Context<'_, C>) {
+    fn on_follows_from(&self, span: &span::LocalId, follows: &span::LocalId, ctx: subscribe::Context<'_, C>) {
         try_lock!(self.inner.read()).on_follows_from(span, follows, ctx)
     }
 
@@ -112,22 +112,22 @@ where
     }
 
     #[inline]
-    fn on_enter(&self, id: &span::Id, ctx: subscribe::Context<'_, C>) {
+    fn on_enter(&self, id: &span::LocalId, ctx: subscribe::Context<'_, C>) {
         try_lock!(self.inner.read()).on_enter(id, ctx)
     }
 
     #[inline]
-    fn on_exit(&self, id: &span::Id, ctx: subscribe::Context<'_, C>) {
+    fn on_exit(&self, id: &span::LocalId, ctx: subscribe::Context<'_, C>) {
         try_lock!(self.inner.read()).on_exit(id, ctx)
     }
 
     #[inline]
-    fn on_close(&self, id: span::Id, ctx: subscribe::Context<'_, C>) {
+    fn on_close(&self, id: span::LocalId, ctx: subscribe::Context<'_, C>) {
         try_lock!(self.inner.read()).on_close(id, ctx)
     }
 
     #[inline]
-    fn on_id_change(&self, old: &span::Id, new: &span::Id, ctx: subscribe::Context<'_, C>) {
+    fn on_id_change(&self, old: &span::LocalId, new: &span::LocalId, ctx: subscribe::Context<'_, C>) {
         try_lock!(self.inner.read()).on_id_change(old, new, ctx)
     }
 }

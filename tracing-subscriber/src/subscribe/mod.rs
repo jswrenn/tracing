@@ -801,7 +801,7 @@ where
 
     /// Notifies this subscriber that a new span was constructed with the given
     /// `Attributes` and `Id`.
-    fn on_new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, ctx: Context<'_, C>) {
+    fn on_new_span(&self, attrs: &span::Attributes<'_>, id: &span::LocalId, ctx: Context<'_, C>) {
         let _ = (attrs, id, ctx);
     }
 
@@ -818,30 +818,30 @@ where
     // Note: it's unclear to me why we'd need the current span in `record` (the
     // only thing the `Context` type currently provides), but passing it in anyway
     // seems like a good future-proofing measure as it may grow other methods later...
-    fn on_record(&self, _span: &span::Id, _values: &span::Record<'_>, _ctx: Context<'_, C>) {}
+    fn on_record(&self, _span: &span::LocalId, _values: &span::Record<'_>, _ctx: Context<'_, C>) {}
 
     /// Notifies this subscriber that a span with the ID `span` recorded that it
     /// follows from the span with the ID `follows`.
     // Note: it's unclear to me why we'd need the current span in `record` (the
     // only thing the `Context` type currently provides), but passing it in anyway
     // seems like a good future-proofing measure as it may grow other methods later...
-    fn on_follows_from(&self, _span: &span::Id, _follows: &span::Id, _ctx: Context<'_, C>) {}
+    fn on_follows_from(&self, _span: &span::LocalId, _follows: &span::LocalId, _ctx: Context<'_, C>) {}
 
     /// Notifies this subscriber that an event has occurred.
     fn on_event(&self, _event: &Event<'_>, _ctx: Context<'_, C>) {}
 
     /// Notifies this subscriber that a span with the given ID was entered.
-    fn on_enter(&self, _id: &span::Id, _ctx: Context<'_, C>) {}
+    fn on_enter(&self, _id: &span::LocalId, _ctx: Context<'_, C>) {}
 
     /// Notifies this subscriber that the span with the given ID was exited.
-    fn on_exit(&self, _id: &span::Id, _ctx: Context<'_, C>) {}
+    fn on_exit(&self, _id: &span::LocalId, _ctx: Context<'_, C>) {}
 
     /// Notifies this subscriber that the span with the given ID has been closed.
-    fn on_close(&self, _id: span::Id, _ctx: Context<'_, C>) {}
+    fn on_close(&self, _id: span::LocalId, _ctx: Context<'_, C>) {}
 
     /// Notifies this subscriber that a span ID has been cloned, and that the
     /// subscriber returned a different ID.
-    fn on_id_change(&self, _old: &span::Id, _new: &span::Id, _ctx: Context<'_, C>) {}
+    fn on_id_change(&self, _old: &span::LocalId, _new: &span::LocalId, _ctx: Context<'_, C>) {}
 
     /// Composes this subscriber around the given collector, returning a `Layered`
     /// struct implementing `Subscribe`.
@@ -1340,7 +1340,7 @@ pub trait Filter<S> {
     /// By default, this method does nothing. `Filter` implementations that
     /// need to be notified when new spans are created can override this
     /// method.
-    fn on_new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, ctx: Context<'_, S>) {
+    fn on_new_span(&self, attrs: &span::Attributes<'_>, id: &span::LocalId, ctx: Context<'_, S>) {
         let _ = (attrs, id, ctx);
     }
 
@@ -1350,7 +1350,7 @@ pub trait Filter<S> {
     /// By default, this method does nothing. `Filter` implementations that
     /// need to be notified when new spans are created can override this
     /// method.
-    fn on_record(&self, id: &span::Id, values: &span::Record<'_>, ctx: Context<'_, S>) {
+    fn on_record(&self, id: &span::LocalId, values: &span::Record<'_>, ctx: Context<'_, S>) {
         let _ = (id, values, ctx);
     }
 
@@ -1358,7 +1358,7 @@ pub trait Filter<S> {
     ///
     /// By default, this method does nothing. `Filter` implementations that
     /// need to be notified when a span is entered can override this method.
-    fn on_enter(&self, id: &span::Id, ctx: Context<'_, S>) {
+    fn on_enter(&self, id: &span::LocalId, ctx: Context<'_, S>) {
         let _ = (id, ctx);
     }
 
@@ -1366,7 +1366,7 @@ pub trait Filter<S> {
     ///
     /// By default, this method does nothing. `Filter` implementations that
     /// need to be notified when a span is exited can override this method.
-    fn on_exit(&self, id: &span::Id, ctx: Context<'_, S>) {
+    fn on_exit(&self, id: &span::LocalId, ctx: Context<'_, S>) {
         let _ = (id, ctx);
     }
 
@@ -1374,7 +1374,7 @@ pub trait Filter<S> {
     ///
     /// By default, this method does nothing. `Filter` implementations that
     /// need to be notified when a span is closed can override this method.
-    fn on_close(&self, id: span::Id, ctx: Context<'_, S>) {
+    fn on_close(&self, id: span::LocalId, ctx: Context<'_, S>) {
         let _ = (id, ctx);
     }
 }
@@ -1411,7 +1411,7 @@ where
     }
 
     #[inline]
-    fn on_new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, ctx: Context<'_, C>) {
+    fn on_new_span(&self, attrs: &span::Attributes<'_>, id: &span::LocalId, ctx: Context<'_, C>) {
         if let Some(ref inner) = self {
             inner.on_new_span(attrs, id, ctx)
         }
@@ -1442,14 +1442,14 @@ where
     }
 
     #[inline]
-    fn on_record(&self, span: &span::Id, values: &span::Record<'_>, ctx: Context<'_, C>) {
+    fn on_record(&self, span: &span::LocalId, values: &span::Record<'_>, ctx: Context<'_, C>) {
         if let Some(ref inner) = self {
             inner.on_record(span, values, ctx);
         }
     }
 
     #[inline]
-    fn on_follows_from(&self, span: &span::Id, follows: &span::Id, ctx: Context<'_, C>) {
+    fn on_follows_from(&self, span: &span::LocalId, follows: &span::LocalId, ctx: Context<'_, C>) {
         if let Some(ref inner) = self {
             inner.on_follows_from(span, follows, ctx);
         }
@@ -1463,28 +1463,28 @@ where
     }
 
     #[inline]
-    fn on_enter(&self, id: &span::Id, ctx: Context<'_, C>) {
+    fn on_enter(&self, id: &span::LocalId, ctx: Context<'_, C>) {
         if let Some(ref inner) = self {
             inner.on_enter(id, ctx);
         }
     }
 
     #[inline]
-    fn on_exit(&self, id: &span::Id, ctx: Context<'_, C>) {
+    fn on_exit(&self, id: &span::LocalId, ctx: Context<'_, C>) {
         if let Some(ref inner) = self {
             inner.on_exit(id, ctx);
         }
     }
 
     #[inline]
-    fn on_close(&self, id: span::Id, ctx: Context<'_, C>) {
+    fn on_close(&self, id: span::LocalId, ctx: Context<'_, C>) {
         if let Some(ref inner) = self {
             inner.on_close(id, ctx);
         }
     }
 
     #[inline]
-    fn on_id_change(&self, old: &span::Id, new: &span::Id, ctx: Context<'_, C>) {
+    fn on_id_change(&self, old: &span::LocalId, new: &span::LocalId, ctx: Context<'_, C>) {
         if let Some(ref inner) = self {
             inner.on_id_change(old, new, ctx)
         }
@@ -1622,7 +1622,7 @@ feature! {
             self.iter().all(|s| s.enabled(metadata, ctx.clone()))
         }
 
-        fn on_new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, ctx: Context<'_, C>) {
+        fn on_new_span(&self, attrs: &span::Attributes<'_>, id: &span::LocalId, ctx: Context<'_, C>) {
             for s in self {
                 s.on_new_span(attrs, id, ctx.clone());
             }
@@ -1641,13 +1641,13 @@ feature! {
             Some(max_level)
         }
 
-        fn on_record(&self, span: &span::Id, values: &span::Record<'_>, ctx: Context<'_, C>) {
+        fn on_record(&self, span: &span::LocalId, values: &span::Record<'_>, ctx: Context<'_, C>) {
             for s in self {
                 s.on_record(span, values, ctx.clone())
             }
         }
 
-        fn on_follows_from(&self, span: &span::Id, follows: &span::Id, ctx: Context<'_, C>) {
+        fn on_follows_from(&self, span: &span::LocalId, follows: &span::LocalId, ctx: Context<'_, C>) {
             for s in self {
                 s.on_follows_from(span, follows, ctx.clone());
             }
@@ -1659,19 +1659,19 @@ feature! {
             }
         }
 
-        fn on_enter(&self, id: &span::Id, ctx: Context<'_, C>) {
+        fn on_enter(&self, id: &span::LocalId, ctx: Context<'_, C>) {
             for s in self {
                 s.on_enter(id, ctx.clone());
             }
         }
 
-        fn on_exit(&self, id: &span::Id, ctx: Context<'_, C>) {
+        fn on_exit(&self, id: &span::LocalId, ctx: Context<'_, C>) {
             for s in self {
                 s.on_exit(id, ctx.clone());
             }
         }
 
-        fn on_close(&self, id: span::Id, ctx: Context<'_, C>) {
+        fn on_close(&self, id: span::LocalId, ctx: Context<'_, C>) {
             for s in self {
                 s.on_close(id.clone(), ctx.clone());
             }
